@@ -1,0 +1,17 @@
+{
+  "name": "Resolve Aê",
+  "short_name": "Resolve Aê",
+  "description": "Controle financeiro pessoal, sincronizado com a planilha.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4F5F7",
+  "theme_color": "#0F172A",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
