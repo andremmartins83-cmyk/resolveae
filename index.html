@@ -69,7 +69,7 @@
 .sb{padding-top:env(safe-area-inset-top)}
 .sb-ft{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .hd{padding-left:calc(28px + env(safe-area-inset-left));padding-right:calc(28px + env(safe-area-inset-right))}
-.ct{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.ct{padding-bottom:calc(96px + env(safe-area-inset-bottom))}  /* folga para o botao flutuante nao cobrir a ultima linha */
 .sb-ft{cursor:pointer;transition:background .15s}.sb-ft:hover{background:var(--bg)}
 .sb-ft .dot.wn{background:var(--o5)}.sb-ft .dot.er{background:var(--r5)}.sb-ft .dot.of{background:var(--t3);animation:none}
 .sb-sync{padding:10px 12px;border-top:1px solid var(--bl);display:flex;gap:6px}
@@ -78,7 +78,7 @@
 .sb-sync button:active{transform:scale(.95)}
 
 .nm span.rn{cursor:pointer;transition:all .15s;border-bottom:1px dashed transparent}.nm span.rn:hover{border-bottom-color:var(--b5);color:var(--b6)}
-.alert-pop{position:fixed;bottom:28px;right:28px;width:380px;max-width:calc(100vw - 40px);background:var(--wh);border-radius:var(--rad);border:2px solid var(--r5);box-shadow:var(--s3);z-index:300;overflow:hidden;animation:alertIn .5s ease}
+.alert-pop{position:fixed;bottom:28px;right:96px;width:380px;max-width:calc(100vw - 40px);background:var(--wh);border-radius:var(--rad);border:2px solid var(--r5);box-shadow:var(--s3);z-index:300;overflow:hidden;animation:alertIn .5s ease}
 @keyframes alertIn{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:none}}
 .alert-pop-stripe{height:4px;background:linear-gradient(90deg,var(--r5),var(--o5),var(--r5));background-size:200% 100%;animation:alertStripe 2s linear infinite}
 @keyframes alertStripe{0%{background-position:0% 0}100%{background-position:200% 0}}
@@ -92,7 +92,54 @@
 .alert-pop-close button{padding:6px 16px;border-radius:var(--rs);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--r50);color:var(--r6);transition:all .15s}
 .alert-pop-close button:hover{background:var(--r5);color:#fff}
 .alert-pop-timer{height:3px;background:var(--r5);transition:width linear}
-@media(max-width:768px){.alert-pop{bottom:16px;right:16px;left:16px;width:auto}}
+@media(max-width:768px){.alert-pop{bottom:calc(88px + env(safe-area-inset-bottom));right:16px;left:16px;width:auto}}
+
+/* ===== FASE 4 — LANCAMENTO RAPIDO + CONTROLE ===== */
+.fab{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--b6),var(--p6));color:#fff;font-size:25px;cursor:pointer;box-shadow:0 8px 24px rgba(37,99,235,.35);z-index:400;display:flex;align-items:center;justify-content:center;transition:transform .15s;touch-action:manipulation}
+.fab:hover{transform:scale(1.06)}.fab:active{transform:scale(.9)}
+.lc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px;max-height:236px;overflow-y:auto;padding:2px}
+.lc-cat{padding:10px 6px;border-radius:var(--rs);border:1.5px solid var(--bd);background:var(--wh);font-family:inherit;font-size:11.5px;font-weight:600;color:var(--t2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:64px;justify-content:center;text-align:center;line-height:1.2;transition:all .15s;touch-action:manipulation}
+.lc-cat .e{font-size:19px}
+.lc-cat:hover{border-color:var(--b5);color:var(--b6)}
+.lc-cat.on{background:var(--tx);color:#fff;border-color:var(--tx)}
+.lc-val{width:100%;padding:13px 12px;border:1.5px solid var(--bd);border-radius:var(--rs);font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;text-align:center;outline:none;transition:all .15s}
+.lc-val:focus{border-color:var(--b5);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.ct-hd,.ct-row{display:grid;grid-template-columns:minmax(130px,1.5fr) repeat(3,minmax(78px,.7fr));gap:10px;align-items:center;padding:10px 18px}
+.ct-hd{background:var(--bg);border-bottom:1px solid var(--bd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:8px 18px}
+.ct-row{border-bottom:1px solid var(--bl)}
+.ct-row:last-child{border-bottom:none}
+.ct-hd span:not(:first-child),.ct-v{text-align:right}
+.ct-nm{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
+.ct-nm .tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-v{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
+.ct-bar{grid-column:1/-1;height:6px;background:var(--bg);border-radius:6px;overflow:hidden;margin-top:-2px}
+.ct-fill{height:100%;border-radius:6px;transition:width .5s}
+.ct-fill.ok{background:linear-gradient(90deg,var(--g5),var(--g4))}.ct-fill.wn{background:linear-gradient(90deg,var(--o5),var(--y4))}.ct-fill.bd{background:linear-gradient(90deg,var(--r5),var(--r4))}
+.ct-tag{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.ct-tag.pg{background:var(--b50);color:var(--b6)}.ct-tag.ex{background:var(--o50);color:var(--o6)}
+.lg-item{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--bl);font-size:12.5px}
+.lg-item:last-child{border-bottom:none}
+.lg-dt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);flex-shrink:0;width:42px}
+.lg-nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-ob{font-size:10.5px;color:var(--t3);font-weight:500}
+.lg-vl{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;margin-left:auto;flex-shrink:0}
+.lg-vl.d{color:var(--r6)}.lg-vl.r{color:var(--g6)}
+.lg-x{border:none;background:var(--r50);color:var(--r6);border-radius:var(--rx);width:28px;height:28px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;touch-action:manipulation}
+.lg-x:hover{background:var(--r5);color:#fff}
+.lg-fila{font-size:9px;font-weight:700;color:var(--o6);background:var(--o50);padding:2px 6px;border-radius:4px}
+.cds3{grid-template-columns:repeat(3,1fr)}
+/* No celular a linha de 4 colunas nao cabe: nome em cima, os tres valores embaixo com rotulo */
+@media(max-width:768px){
+  .fab{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:56px;height:56px}
+  .cds3{grid-template-columns:1fr 1fr}.cds3 .cd:last-child{grid-column:1/-1}
+  .ct-hd{display:none}
+  .ct-row{grid-template-columns:repeat(3,1fr);gap:4px 8px;padding:12px}
+  .ct-nm{grid-column:1/-1;font-size:12px}
+  .ct-v{text-align:left;font-size:11.5px}
+  .ct-row .ct-v:nth-child(4){text-align:right}
+  .ct-v::before{content:attr(data-l);display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--t3);margin-bottom:1px}
+  .lg-item{padding:10px 12px}
+}
 </style>
 </head>
 <body>
@@ -101,6 +148,7 @@
 <div class="mn"><header class="hd" id="hd"></header><div class="ct" id="ct"></div></div>
 <div class="mo" id="mo" onclick="cmo(event)"><div class="md" id="md" onclick="event.stopPropagation()"></div></div>
 <div class="tst" id="tst"></div><div id="alertPop"></div>
+<button class="fab" id="fab" onclick="abrirLanc()" title="Lançar gasto ou renda (realizado)">⚡</button>
 <script>
 var MN=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var SH=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -125,8 +173,8 @@ renda:[
 reserva:[{name:'Poupança',values:z12()},{name:'Reserva de Emergência',values:z12()}],dividas:[]}}
 
 function initDB(){var s=null;try{s=localStorage.getItem('fm_modelo')}catch(e){}
-if(s)try{var d=JSON.parse(s);if(!d.lancamentos)d.lancamentos=[];return d}catch(e){}
-return{years:{'2026':defYear()},curYear:'2026',mo:new Date().getMonth(),pg:'dashboard',fD:'all',fR:'all',lancamentos:[]}}
+if(s)try{var d=JSON.parse(s);if(!d.lancamentos)d.lancamentos=[];if(!d.filaLanc)d.filaLanc=[];return d}catch(e){}
+return{years:{'2026':defYear()},curYear:'2026',mo:new Date().getMonth(),pg:'dashboard',fD:'all',fR:'all',lancamentos:[],filaLanc:[]}}
 var DB=initDB();
 function Y(){return DB.years[DB.curYear]}
 
@@ -141,7 +189,7 @@ var NUVEM_PENDENTE=null;
 var BOOTANDO=true;
 // pronto: so libera envio depois que a nuvem carregou uma vez (evita sobrescrever a
 // planilha com a copia local durante o boot). alterouOffline: usuario mexeu antes disso.
-var SYNC={estado:'',baseTs:0,baseHash:'',enviando:false,timer:null,pronto:false,alterouOffline:false,ultimoEnviado:' '};
+var SYNC={estado:'',baseTs:0,baseHash:'',enviando:false,timer:null,pronto:false,alterouOffline:false,ultimoEnviado:''};
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function hora(){var d=new Date();return('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
@@ -302,10 +350,10 @@ function filtR(){if(DB.fR==='fixa')return Y().renda.filter(function(r){return r.
 
 function R(){autoMark();syncDividas();var m=DB.mo;rYS();rSB();rHD(m);rPG(m);sv()}
 function rYS(){var yrs=Object.keys(DB.years).sort(),ci=yrs.indexOf(DB.curYear);document.getElementById('yrsel').innerHTML='<button onclick="chYr(-1)" '+(ci<=0?'disabled style="opacity:.3"':'')+'>‹</button><span class="yr-l">'+DB.curYear+'</span><button onclick="chYr(1)" '+(ci>=yrs.length-1?'disabled style="opacity:.3"':'')+'>›</button><button class="yr-a" onclick="addYr()">+ Ano</button>'}
-function rSB(){var p=pen(DB.mo),its=[{id:'dashboard',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',l:'Dashboard'},{id:'plan',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',l:'Planejamento',b:p||null},{d:1},{id:'renda',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>',l:'Renda'},{id:'despesas',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>',l:'Despesas'},{id:'reserva',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>',l:'Reserva'},{id:'dividas',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',l:'Dívidas'},{d:1},{id:'graficos',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',l:'Gráficos'},{d:1},{id:'importar',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',l:'Importar Planilha'}];
+function rSB(){var p=pen(DB.mo),its=[{id:'dashboard',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',l:'Dashboard'},{id:'plan',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',l:'Planejamento',b:p||null},{id:'controle',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',l:'Controle'},{d:1},{id:'renda',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>',l:'Renda'},{id:'despesas',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>',l:'Despesas'},{id:'reserva',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>',l:'Reserva'},{id:'dividas',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',l:'Dívidas'},{d:1},{id:'graficos',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',l:'Gráficos'},{d:1},{id:'importar',ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',l:'Importar Planilha'}];
 document.getElementById('sbn').innerHTML=its.map(function(i){return i.d?'<div class="sb-dv"></div>':'<button class="sb-lk '+(DB.pg===i.id?'on':'')+'" onclick="gp(\''+i.id+'\')">'+i.ic+i.l+(i.b?'<span class="sb-bg">'+i.b+'</span>':'')+'</button>'}).join('')}
 function rHD(m){var h='<button class="hb" onclick="tsb()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button><button class="ma2" onclick="pm()">‹</button><div class="mps">';for(var i=0;i<12;i++)h+='<button class="mp '+(i===m?'on':'')+'" onclick="sm('+i+')">'+SH[i]+'</button>';h+='</div><button class="ma2" onclick="nm()">›</button><span class="hd-r">'+MN[m]+' '+DB.curYear+'</span>';document.getElementById('hd').innerHTML=h}
-function rPG(m){var pages={dashboard:pgD,plan:pgP,renda:pgR,despesas:pgDe,reserva:pgRe,graficos:pgG,dividas:pgDiv,importar:pgImp};document.getElementById('ct').innerHTML=(pages[DB.pg]||pgD)(m);if(DB.pg==='dashboard')checkFinancialAlert(m)}
+function rPG(m){var pages={dashboard:pgD,plan:pgP,controle:pgCtrl,renda:pgR,despesas:pgDe,reserva:pgRe,graficos:pgG,dividas:pgDiv,importar:pgImp};document.getElementById('ct').innerHTML=(pages[DB.pg]||pgD)(m);if(DB.pg==='dashboard')checkFinancialAlert(m)}
 
 function pgD(m){var r=rendaT(m),d=tD(m),s=sal(m),re=accRe(m),cr=carry(m),pct=r>0?d/r*100:0,pc=pct>95?'bd':pct>80?'wn':'ok',pe=pen(m);var nf=Y().despesas.filter(function(x){return x.tipo==='fixa'&&x.values[m]>0}).length,nv=Y().despesas.filter(function(x){return x.tipo==='variavel'&&x.values[m]>0}).length;
 var h='<div class="pg on"><div class="cds"><div class="cd c-r"><div class="st2"></div><div class="lb">Renda Total</div><div class="vl">'+fm(r)+'</div><div class="su">'+(cr>0?'Inclui sobra: '+fm(cr):cr<0?'Déficit anterior: '+fm(cr):MN[m])+'</div></div><div class="cd c-d"><div class="st2"></div><div class="lb">Despesas</div><div class="vl">'+fm(d)+'</div><div class="su">'+nf+' fixas · '+nv+' variáveis</div></div><div class="cd '+(s>=0?'c-sp':'c-sn')+'"><div class="st2"></div><div class="lb">Saldo</div><div class="vl">'+fm(s)+'</div><div class="su">'+(s>0?'Sobra → '+SH[Math.min(m+1,11)]:'Déficit')+'</div></div><div class="cd c-rv"><div class="st2"></div><div class="lb">Reserva</div><div class="vl">'+fm(re)+'</div><div class="su">Até '+SH[m]+'</div></div><div class="cd" style="border-left:4px solid '+(cr>=0?'var(--b5)':'var(--r5)')+'">'+'<div class="lb" style="color:'+(cr>=0?'var(--b6)':'var(--r6)')+'">'+(cr>=0?'Sobra Mês Anterior':'Déficit Mês Anterior')+'</div><div class="vl" style="color:'+(cr>0?'var(--b6)':cr<0?'var(--r5)':'var(--t3)')+'">'+fm(cr)+'</div><div class="su">'+(cr>=0?'Entra como renda':'Reduz sua renda')+'</div></div></div>';
@@ -916,6 +964,8 @@ function importData(file){
       if(!confirm('Importar dados?\n\nAnos encontrados: '+yrs+'\n\nIsso vai SUBSTITUIR todos os dados atuais. Deseja continuar?'))return;
       // Apply
       DB=data;
+      if(!DB.lancamentos)DB.lancamentos=[];
+      if(!DB.filaLanc)DB.filaLanc=[];
       sv();
       toast('Dados importados com sucesso!');
       R();
@@ -971,11 +1021,226 @@ function hideAlert(){
 
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.getElementById('mo').classList.remove('on');csb()}});
 
+// ===== FASE 4 — LANCAMENTO RAPIDO (realizado) =====
+// O planejamento continua sendo o PREVISTO. O lancamento so alimenta o REALIZADO.
+// Fixa marcada como "Pago" conta como realizado pelo valor previsto; se houver
+// lancamento manual para a mesma categoria/mes, o lancamento manda.
+var LC={tipo:'despesa',cat:'',lista:[],extras:[]};
+var LANC_ENVIANDO=false;
+
+function pad2(n){return('0'+n).slice(-2)}
+function fmDia(iso){var p=String(iso||'').split('-');return p.length===3?p[2]+'/'+p[1]:'—'}
+
+// lancamentos ja confirmados na planilha + os que ainda estao na fila de envio
+function lancTodos(){
+  var vis=(DB.lancamentos||[]).slice(),ids={};
+  vis.forEach(function(l){ids[String(l.id)]=1});
+  (DB.filaLanc||[]).forEach(function(l){if(!ids[String(l.id)])vis.push(l)});
+  return vis;
+}
+function naFila(id){return (DB.filaLanc||[]).some(function(l){return String(l.id)===String(id)})}
+function lancDoMes(ano,mes,tipo){
+  return lancTodos().filter(function(l){
+    return String(l.ano)===String(ano)&&Number(l.mes)===Number(mes)&&(!tipo||String(l.tipo||'despesa')===tipo);
+  });
+}
+function somaPorCat(ano,mes,tipo){
+  var mapa={};
+  lancDoMes(ano,mes,tipo).forEach(function(l){var c=String(l.categoria||'—');mapa[c]=(mapa[c]||0)+(Number(l.valor)||0)});
+  return mapa;
+}
+// realizado por categoria: lancamento manda; sem lancamento, fixa "Paga" vale o previsto
+function realizado(m,tipo){
+  var lista=tipo==='renda'?Y().renda:Y().despesas,mapa=somaPorCat(DB.curYear,m,tipo||'despesa'),out={};
+  lista.forEach(function(it){
+    if(mapa[it.name]!==undefined)out[it.name]={v:mapa[it.name],src:'lanc'};
+    else if(tipo!=='renda'&&it.status&&it.status[m]==='Pago'&&it.values[m]>0)out[it.name]={v:it.values[m],src:'pago'};
+    else out[it.name]={v:0,src:''};
+  });
+  for(var c in mapa)if(out[c]===undefined)out[c]={v:mapa[c],src:'extra'};
+  return out;
+}
+function totalReal(m,tipo){var o=realizado(m,tipo),t=0;for(var c in o)t+=o[c].v;return t}
+
+function dataPadrao(){
+  var h=new Date();
+  if(String(h.getFullYear())===String(DB.curYear)&&h.getMonth()===DB.mo)return DB.curYear+'-'+pad2(DB.mo+1)+'-'+pad2(h.getDate());
+  return DB.curYear+'-'+pad2(DB.mo+1)+'-01';
+}
+
+function abrirLanc(){LC.tipo='despesa';LC.cat='';LC.extras=[];om(htmlLanc());setTimeout(function(){var e=document.getElementById('lcV');if(e)e.focus()},140)}
+function htmlLanc(){
+  return '<h3>⚡ Lançar</h3><p class="ms">Entra no <strong>realizado</strong>. Não mexe no planejamento.</p>'+
+  '<div class="tgl" style="margin-bottom:14px"><button class="tgl-o '+(LC.tipo==='despesa'?'on':'')+'" onclick="lcTipo(\'despesa\')">💸 Gasto</button><button class="tgl-o '+(LC.tipo==='renda'?'on':'')+'" onclick="lcTipo(\'renda\')">💰 Entrada</button></div>'+
+  '<div class="fd"><label>Valor</label><input type="number" id="lcV" class="lc-val" placeholder="0,00" step="0.01" inputmode="decimal"></div>'+
+  '<div class="fd"><label>Categoria</label><input type="text" id="lcF" placeholder="🔎 Buscar categoria…" oninput="lcFiltrar()" style="width:100%;padding:9px 12px;border:1.5px solid var(--bd);border-radius:var(--rs);font-family:inherit;font-size:13px;outline:none;margin-bottom:8px"><div class="lc-grid" id="lcG">'+catBtns()+'</div></div>'+
+  '<div class="fd"><label>Data</label><input type="date" id="lcD" value="'+dataPadrao()+'"></div>'+
+  '<div class="fd"><label>Observação (opcional)</label><input type="text" id="lcO" placeholder="Ex: mercado da esquina"></div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="salvarLanc()">Lançar</button></div>';
+}
+function semAcento(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+// ordem: mais lancadas no mes > maior valor previsto no mes > alfabetica
+function catBtns(){
+  var m=DB.mo,base=(LC.tipo==='renda'?Y().renda:Y().despesas),usos={};
+  lancDoMes(DB.curYear,m,LC.tipo).forEach(function(l){usos[l.categoria]=(usos[l.categoria]||0)+1});
+  var arr=base.map(function(x){return{n:x.name,u:usos[x.name]||0,v:x.values[m]||0}}),vistos={};
+  arr.forEach(function(x){vistos[x.n]=1});
+  lancTodos().forEach(function(l){if(String(l.tipo||'despesa')===LC.tipo&&l.categoria&&!vistos[l.categoria]){vistos[l.categoria]=1;arr.push({n:l.categoria,u:usos[l.categoria]||0,v:0})}});
+  LC.extras.forEach(function(n){if(!vistos[n]){vistos[n]=1;arr.push({n:n,u:0,v:0})}});
+  arr.sort(function(a,b){if(b.u!==a.u)return b.u-a.u;if(b.v!==a.v)return b.v-a.v;return a.n.localeCompare(b.n)});
+  LC.lista=arr.map(function(x){return x.n});
+  var f=semAcento((document.getElementById('lcF')||{}).value||'');
+  var htm=LC.lista.map(function(n,i){
+    if(f&&semAcento(n).indexOf(f)<0)return '';
+    var ic=gi(n);
+    return '<button type="button" class="lc-cat'+(LC.cat===n?' on':'')+'" onclick="lcCat(this,'+i+')"><span class="e">'+ic[0]+'</span>'+esc(n)+'</button>';
+  }).join('');
+  return htm+'<button type="button" class="lc-cat" onclick="lcNovaCat()"><span class="e">➕</span>Outra</button>';
+}
+function lcFiltrar(){document.getElementById('lcG').innerHTML=catBtns()}
+function lcTipo(t){
+  var v=(document.getElementById('lcV')||{}).value||'',o=(document.getElementById('lcO')||{}).value||'',d=(document.getElementById('lcD')||{}).value||'';
+  LC.tipo=t;LC.cat='';LC.extras=[];om(htmlLanc());
+  document.getElementById('lcV').value=v;document.getElementById('lcO').value=o;if(d)document.getElementById('lcD').value=d;
+}
+function lcCat(el,i){
+  LC.cat=LC.lista[i];
+  var b=el.parentElement.querySelectorAll('.lc-cat');
+  for(var k=0;k<b.length;k++)b[k].classList.remove('on');
+  el.classList.add('on');
+}
+function lcNovaCat(){
+  document.getElementById('lcG').innerHTML='<div style="grid-column:1/-1;display:flex;gap:6px"><input type="text" id="lcNC" placeholder="Nome da categoria" style="flex:1;padding:10px 12px;border:1.5px solid var(--bd);border-radius:var(--rs);font-family:inherit;font-size:14px;outline:none"><button type="button" class="btn btn-p" style="flex:0 0 auto;padding:10px 16px" onclick="lcConfCat()">OK</button></div>';
+  setTimeout(function(){var e=document.getElementById('lcNC');if(e)e.focus()},60);
+}
+function lcConfCat(){
+  var v=(document.getElementById('lcNC').value||'').trim();
+  if(!v){toast('Digite o nome da categoria');return}
+  if(LC.extras.indexOf(v)<0)LC.extras.push(v);
+  LC.cat=v;
+  var f=document.getElementById('lcF');if(f)f.value='';
+  document.getElementById('lcG').innerHTML=catBtns();
+}
+function salvarLanc(){
+  var v=parseFloat(String(document.getElementById('lcV').value).replace(',','.'))||0;
+  if(v<=0){toast('Informe o valor');var e=document.getElementById('lcV');if(e)e.focus();return}
+  if(!LC.cat){toast('Escolha a categoria');return}
+  var dt=document.getElementById('lcD').value||dataPadrao(),p=dt.split('-');
+  if(p.length!==3){toast('Data inválida');return}
+  var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,
+    tipo:LC.tipo,categoria:LC.cat,valor:v,obs:(document.getElementById('lcO').value||'').trim(),origem:'app'};
+  if(!DB.filaLanc)DB.filaLanc=[];
+  DB.filaLanc.push(l);
+  salvarLocal();cmo();
+  toast((LC.tipo==='renda'?'💰 ':'💸 ')+LC.cat+' · '+fm(v));
+  R();
+  enviarFilaLanc();
+}
+function enviarFilaLanc(){
+  if(!KEY||!DB.filaLanc||!DB.filaLanc.length||LANC_ENVIANDO)return;
+  var l=DB.filaLanc[0];
+  LANC_ENVIANDO=true;
+  syncUI('enviando','Salvando lançamento…');
+  apiPost('addLancamento',l).then(function(r){
+    LANC_ENVIANDO=false;
+    if(r&&r.ok){
+      DB.filaLanc.shift();
+      if(!DB.lancamentos)DB.lancamentos=[];
+      DB.lancamentos.push(l);
+      salvarLocal();
+      if(DB.filaLanc.length){enviarFilaLanc();return}
+      syncUI('ok','Lançamento salvo '+hora());
+      if(DB.pg==='controle')R();
+    }else{
+      syncUI('erro','Lançamento na fila — tentando de novo');
+      setTimeout(enviarFilaLanc,20000);
+    }
+  }).catch(function(){
+    LANC_ENVIANDO=false;
+    syncUI('offline','Lançamento na fila — envio quando voltar');
+    setTimeout(enviarFilaLanc,20000);
+  });
+}
+function delLanc(id){
+  var l=lancTodos().filter(function(x){return String(x.id)===String(id)})[0];
+  if(!l)return;
+  om('<h3>Excluir lançamento</h3><p class="ms">'+esc(l.categoria)+' · '+fm(l.valor)+' · '+fmDia(l.data)+'</p>'+
+  '<div class="ins yw"><span class="em">⚠️</span>Sai do realizado. O previsto no planejamento não muda.</div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-d" onclick="confDelLanc(\''+esc(String(id))+'\')">Excluir</button></div>');
+}
+function confDelLanc(id){
+  var estavaNaFila=naFila(id);
+  DB.lancamentos=(DB.lancamentos||[]).filter(function(x){return String(x.id)!==String(id)});
+  DB.filaLanc=(DB.filaLanc||[]).filter(function(x){return String(x.id)!==String(id)});
+  salvarLocal();cmo();toast('Lançamento excluído');R();
+  if(KEY&&!estavaNaFila)apiPost('delLancamento',{id:id}).catch(function(){});
+}
+
+// ===== PAGINA CONTROLE — previsto x realizado =====
+function pgCtrl(m){
+  var real=realizado(m,'despesa'),linhas=[];
+  Y().despesas.forEach(function(d){
+    var pv=d.values[m]||0,o=real[d.name]||{v:0,src:''};
+    if(pv<=0&&o.v<=0)return;
+    linhas.push({n:d.name,p:pv,r:o.v,src:o.src});
+  });
+  for(var c in real)if(real[c].src==='extra')linhas.push({n:c,p:0,r:real[c].v,src:'extra'});
+  // quem estourou vem primeiro (maior estouro no topo); o resto por maior valor
+  linhas.sort(function(a,b){
+    var ea=a.r>a.p?1:0,eb=b.r>b.p?1:0;
+    if(ea!==eb)return eb-ea;
+    if(ea)return (b.r-b.p)-(a.r-a.p);
+    return Math.max(b.p,b.r)-Math.max(a.p,a.r);
+  });
+  var tp=tD(m),tr=totalReal(m,'despesa'),df=tp-tr;
+  var rp=tR(m),rr=totalReal(m,'renda');
+
+  var h='<div class="pg on"><div class="pt">Controle · '+MN[m]+' '+DB.curYear+'</div>';
+  h+='<div class="cds cds3">'+
+    '<div class="cd c-sp"><div class="st2"></div><div class="lb">Previsto</div><div class="vl">'+fm(tp)+'</div><div class="su">'+Y().despesas.filter(function(x){return x.values[m]>0}).length+' contas planejadas</div></div>'+
+    '<div class="cd c-d"><div class="st2"></div><div class="lb">Realizado</div><div class="vl">'+fm(tr)+'</div><div class="su">'+lancDoMes(DB.curYear,m,'despesa').length+' lançamentos + fixas pagas</div></div>'+
+    '<div class="cd '+(df>=0?'c-r':'c-sn')+'"><div class="st2"></div><div class="lb">Diferença</div><div class="vl">'+fm(df)+'</div><div class="su">'+(df>=0?'Dentro do previsto':'Estourou o previsto')+'</div></div>'+
+  '</div>';
+  if(df<0)h+='<div class="ins al"><span class="em">🚨</span>Gastou <strong>'+fm(-df)+'</strong> acima do que planejou para '+MN[m]+'.</div>';
+  else if(tr>0)h+='<div class="ins gd"><span class="em">✅</span>Sobram <strong>'+fm(df)+'</strong> do previsto de '+MN[m]+'.</div>';
+  if(rr>0)h+='<div class="ins"><span class="em">💰</span>Entradas lançadas: <strong>'+fm(rr)+'</strong> · previsto de renda: <strong>'+fm(rp)+'</strong></div>';
+
+  h+='<div class="tc"><div class="tc-h"><h2>📊 Por categoria</h2><button class="ab" onclick="abrirLanc()">⚡ Lançar</button></div>';
+  if(linhas.length){
+    h+='<div class="ct-hd"><span>Categoria</span><span>Previsto</span><span>Realizado</span><span>Diferença</span></div>';
+    linhas.forEach(function(l){
+      var pct=l.p>0?l.r/l.p*100:(l.r>0?100:0),cls=l.p<=0&&l.r>0?'bd':pct>100?'bd':pct>90?'wn':'ok',d2=l.p-l.r,ic=gi(l.n);
+      var tag=l.src==='pago'?'<span class="ct-tag pg">fixa paga</span>':l.src==='extra'?'<span class="ct-tag ex">fora do previsto</span>':'';
+      h+='<div class="ct-row"><div class="ct-nm"><span class="ic '+ic[1]+'">'+ic[0]+'</span><span class="tx">'+esc(l.n)+'</span>'+tag+'</div>'+
+        '<div class="ct-v" data-l="Previsto" style="color:var(--t2)">'+fm(l.p)+'</div>'+
+        '<div class="ct-v" data-l="Realizado">'+fm(l.r)+'</div>'+
+        '<div class="ct-v" data-l="Diferença" style="color:'+(d2<0?'var(--r6)':d2>0?'var(--g6)':'var(--t3)')+'">'+fm(d2)+'</div>'+
+        '<div class="ct-bar"><div class="ct-fill '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>';
+    });
+  }else h+='<div style="padding:28px;text-align:center;color:var(--t3)"><div style="font-size:24px;margin-bottom:6px">📋</div><div style="font-size:12px;font-weight:600">Nada previsto nem lançado em '+MN[m]+'</div></div>';
+  h+='</div>';
+
+  var ls=lancDoMes(DB.curYear,m).slice().sort(function(a,b){return String(b.data).localeCompare(String(a.data))});
+  h+='<div class="tc"><div class="tc-h"><h2>🧾 Lançamentos de '+MN[m]+' <span class="tcb br2">'+ls.length+'</span></h2></div>';
+  if(ls.length){
+    ls.forEach(function(l){
+      var ic=gi(l.categoria),rd=String(l.tipo||'despesa')==='renda';
+      h+='<div class="lg-item"><span class="lg-dt">'+fmDia(l.data)+'</span><span class="ic '+ic[1]+'">'+ic[0]+'</span>'+
+        '<div style="min-width:0;flex:1 1 auto"><div class="lg-nm">'+esc(l.categoria)+(naFila(l.id)?' <span class="lg-fila">na fila</span>':'')+'</div>'+
+        (l.obs?'<div class="lg-ob">'+esc(l.obs)+'</div>':'')+'</div>'+
+        '<span class="lg-vl '+(rd?'r':'d')+'">'+(rd?'+':'−')+' '+fm(l.valor)+'</span>'+
+        '<button class="lg-x" onclick="delLanc(\''+esc(String(l.id))+'\')" title="Excluir">✕</button></div>';
+    });
+  }else h+='<div style="padding:24px;text-align:center;color:var(--t3)"><div style="font-size:22px;margin-bottom:6px">⚡</div><div style="font-size:12px;font-weight:600">Nenhum lançamento ainda — toque no ⚡</div></div>';
+  h+='</div></div>';
+  return h;
+}
+
 // ===== BOOT =====
 R();                    // desenha na hora, com a copia local (sem enviar nada)
 BOOTANDO=false;
 if(KEY){
-  puxarDaNuvem();       // depois busca a versao da planilha
+  puxarDaNuvem().then(function(){enviarFilaLanc()});   // busca a planilha e escoa lancamentos parados
 }else{
   syncUI('offline','Sem chave — toque para conectar');
   setTimeout(pedirChave,400);   // primeira abertura no celular: pede a chave
@@ -990,6 +1255,7 @@ if('serviceWorker' in navigator){
 
 // Voltou a internet: manda o que estiver na fila
 window.addEventListener('online',function(){
+  enviarFilaLanc();
   if(assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);
 });
 window.addEventListener('offline',function(){syncUI('offline','Offline — salvando aqui')});
@@ -997,12 +1263,13 @@ window.addEventListener('offline',function(){syncUI('offline','Offline — salva
 // Voltou para o app (trocou de aba / desbloqueou o celular): confere a planilha
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState!=='visible')return;
+  enviarFilaLanc();
   if(assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);
 });
 
 // Nao deixa sair com alteracao pendente sem avisar
 window.addEventListener('beforeunload',function(e){
-  if(KEY&&assinatura()!==SYNC.ultimoEnviado){e.preventDefault();e.returnValue=''}
+  if(KEY&&(assinatura()!==SYNC.ultimoEnviado||(DB.filaLanc&&DB.filaLanc.length))){e.preventDefault();e.returnValue=''}
 });
 </script>
 </body>
