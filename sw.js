@@ -1,14 +1,17 @@
 // Service worker do Resolve Aê
 // Regra: guarda a casca do app para abrir offline, mas NUNCA guarda dado da planilha.
 // Ao publicar mudanca no app, suba o numero da versao abaixo.
-const VERSAO = 'resolveae-v4';
+const VERSAO = 'resolveae-v5';
 const CASCA = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icone-192.png',
   './icone-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './CreatoDisplay-Regular.otf',
+  './CreatoDisplay-Medium.otf',
+  './CreatoDisplay-Black.otf'
 ];
 
 self.addEventListener('install', e => {
