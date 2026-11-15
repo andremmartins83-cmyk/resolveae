@@ -1,7 +1,7 @@
 // Service worker do Resolve Aê
 // Regra: guarda a casca do app para abrir offline, mas NUNCA guarda dado da planilha.
 // Ao publicar mudanca no app, suba o numero da versao abaixo.
-const VERSAO = 'resolveae-v9';
+const VERSAO = 'resolveae-v10';
 const CASCA = [
   './',
   './index.html',
