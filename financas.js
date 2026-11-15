@@ -6,7 +6,8 @@
  * Sem DOM, sem rede, sem localStorage.
  * Dinheiro guardado em reais com 2 casas; todo cálculo em centavos inteiros.
  * Funções de cálculo não mutam a entrada. Só mutam: pagarParcela,
- * desfazerPagamento, amortizar, propagarFixa e virarAno.
+ * desfazerPagamento, amortizar, propagarFixa, editarValores, virarAno,
+ * pagarFatura, desfazerFatura, encerrar/reabrirDespesa e setConfig/marcar/setDivClasse.
  */
 (function (root) {
   'use strict';
@@ -305,8 +306,13 @@
     var sobraC = prev ? c(prev[11].saldo) : 0;
     var out = [], cfg = Fin.config(DB);
     for (var m = 0; m < 12; m++) {
-      var rendaC = 0, extraC = 0, despC = 0, resC = 0, pend = 0, i;
-      (Y.renda || []).forEach(function (x) { var v = vC(x, m); rendaC += v; if (temNome(cfg.rendaExtra, x.name)) extraC += v; });
+      var rendaC = 0, extraC = 0, finC = 0, despC = 0, resC = 0, pend = 0, i;
+      // item nas duas listas conta só como financiamento (não é descontado duas vezes)
+      (Y.renda || []).forEach(function (x) {
+        var v = vC(x, m); rendaC += v;
+        if (temNome(cfg.rendaFinanc, x.name)) finC += v;
+        else if (temNome(cfg.rendaExtra, x.name)) extraC += v;
+      });
       (Y.reserva || []).forEach(function (x) { resC += vC(x, m); });
       for (i = 0; i < (Y.despesas || []).length; i++) {
         var d = Y.despesas[i], st = d.status ? (d.status[m] || '') : '';
@@ -317,9 +323,11 @@
       for (i = 0; i < linhas.length; i++) { parcC += c(linhas[i].valor); if (linhas[i].status !== 'Pago') pend++; }
       var totDespC = despC + parcC;
       var saldoC = rendaC + sobraC - totDespC;
+      var operC = rendaC - extraC - finC;
       out.push({
-        renda: r(rendaC), rendaExtra: r(extraC), rendaRegular: r(rendaC - extraC),
-        resultado: r(rendaC - totDespC), resultadoSemExtras: r(rendaC - extraC - totDespC),
+        renda: r(rendaC), rendaExtra: r(extraC), rendaFinanc: r(finC),
+        rendaOperacional: r(operC), rendaRegular: r(operC),
+        resultado: r(rendaC - totDespC), resultadoSemExtras: r(operC - totDespC),
         despProprias: r(despC), parcelas: r(parcC), despesas: r(totDespC),
         reserva: r(resC), sobraAnterior: r(sobraC), saldo: r(saldoC),
         comprometimento: rendaC > 0 ? Math.round(totDespC / rendaC * 10000) / 10000 : 0,
@@ -359,24 +367,44 @@
     return false;
   }
   Fin.temNome = temNome;
+  var CLASSES_DIV = ['emprestimo', 'compra', 'outra'];
+  Fin.CLASSES_DIVIDA = CLASSES_DIV.slice();
+  var LISTAS_CFG = ['rendaExtra', 'despDivida', 'assinaturas', 'rendaFinanc'];
+  function cfgRegistro(DB) {
+    var gs = (DB && DB.divergencias) || [];
+    for (var i = 0; i < gs.length; i++) if (gs[i] && gs[i].id === Fin.CFG_ID) return gs[i];
+    return null;
+  }
+  // chaves conhecidas, sempre presentes e com tipo certo
+  function cfgNorm(d) {
+    d = d || {};
+    var out = {}, i;
+    for (i = 0; i < LISTAS_CFG.length; i++) out[LISTAS_CFG[i]] = Array.isArray(d[LISTAS_CFG[i]]) ? d[LISTAS_CFG[i]].map(String) : [];
+    var dc = {}, src = (d.divClasse && typeof d.divClasse === 'object' && !Array.isArray(d.divClasse)) ? d.divClasse : {};
+    Object.keys(src).forEach(function (k) { if (CLASSES_DIV.indexOf(src[k]) >= 0) dc[k] = src[k]; });
+    out.divClasse = dc;
+    return out;
+  }
+  // {rendaExtra, despDivida, assinaturas, rendaFinanc: [nomes], divClasse: {dvId: classe}} (cópia)
   Fin.config = function (DB) {
-    var gs = (DB && DB.divergencias) || [], d = {};
-    for (var i = 0; i < gs.length; i++) if (gs[i] && gs[i].id === Fin.CFG_ID) { d = gs[i].dados || {}; break; }
-    return {
-      rendaExtra: Array.isArray(d.rendaExtra) ? d.rendaExtra.slice() : [],
-      despDivida: Array.isArray(d.despDivida) ? d.despDivida.slice() : []
-    };
+    var g = cfgRegistro(DB);
+    return cfgNorm(g && g.dados);
   };
+  // Grava por cima do que já existe: chave ausente em cfg é preservada (inclusive chaves desconhecidas).
   Fin.setConfig = function (DB, cfg) {
     if (!Array.isArray(DB.divergencias)) DB.divergencias = [];
-    var dados = { rendaExtra: (cfg.rendaExtra || []).slice(), despDivida: (cfg.despDivida || []).slice() };
-    for (var i = 0; i < DB.divergencias.length; i++) if (DB.divergencias[i] && DB.divergencias[i].id === Fin.CFG_ID) { DB.divergencias[i].dados = dados; return DB; }
+    var g = cfgRegistro(DB), dados = clone((g && g.dados) || {}) || {};
+    Object.keys(cfg || {}).forEach(function (k) { if (cfg[k] !== undefined) dados[k] = clone(cfg[k]); });
+    var n = cfgNorm(dados);
+    Object.keys(n).forEach(function (k) { dados[k] = n[k]; });
+    if (g) { g.dados = dados; return DB; }
     DB.divergencias.push({ id: Fin.CFG_ID, tipo: 'config', origem: 'app', descricao: 'Configuração do app (não é divergência)', dados: dados, status: 'resolvida' });
     return DB;
   };
   Fin.ehDivergencia = function (g) { return !!g && g.tipo !== 'config'; };
-  // liga/desliga um nome numa lista da configuração (rendaExtra | despDivida)
+  // liga/desliga um nome numa lista da configuração (rendaExtra | despDivida | assinaturas | rendaFinanc)
   Fin.marcar = function (DB, lista, nome, ligado) {
+    if (LISTAS_CFG.indexOf(lista) < 0) throw new Error('Lista de configuração inválida: ' + lista);
     var cfg = Fin.config(DB), l = cfg[lista] || [], n = normNome(nome);
     l = l.filter(function (x) { return normNome(x) !== n; });
     if (ligado) l.push(String(nome));
@@ -424,6 +452,145 @@
     return d;
   };
 
+  // Ativo de mes0 em diante: algum mês k >= mes0 com valor > 0 e status diferente de 'N/A'.
+  Fin.ativoDesde = function (item, mes0) {
+    if (!item) return false;
+    for (var k = Math.max(0, Number(mes0) || 0); k < 12; k++) {
+      var st = item.status ? item.status[k] : '';
+      if (vC(item, k) > 0 && st !== 'N/A') return true;
+    }
+    return false;
+  };
+
+  // ===================== classificação: cartões, dívidas, despesas =====================
+  Fin.CARTOES = [{ k: 'nubank', n: 'Nubank' }, { k: 'itau', n: 'Itaú' }, { k: 'santander', n: 'Santander' }];
+  // chave do cartão citado no texto ('Limite Itaú', 'Mercado (Nubank)', 'nubank') ou null
+  function cartaoDe(txt) {
+    var n = normNome(txt);
+    if (!n) return null;
+    for (var i = 0; i < Fin.CARTOES.length; i++) {
+      var cd = Fin.CARTOES[i];
+      if (n === cd.k || n.indexOf(normNome(cd.n)) >= 0) return cd.k;
+    }
+    return null;
+  }
+  Fin.cartaoDe = cartaoDe;
+
+  var RE_EMPRESTIMO = /financiamento|empr[eé]stimo|cons[oó]rcio/i;
+  function classeDivCfg(cfg, dv) {
+    if (!dv) return 'outra';
+    var ov = cfg.divClasse[dv.id];
+    if (CLASSES_DIV.indexOf(ov) >= 0) return ov;
+    if (RE_EMPRESTIMO.test(String(dv.name || ''))) return 'emprestimo';
+    if (cartaoDe(dv.credor) || cartaoDe(dv.name)) return 'compra';
+    return 'outra';
+  }
+  function cartaoDivCfg(cfg, dv) {
+    if (!dv || classeDivCfg(cfg, dv) === 'emprestimo') return null;
+    return cartaoDe(dv.credor) || cartaoDe(dv.name);
+  }
+  // 'emprestimo' | 'compra' | 'outra' (override da configuração > nome > cartão no credor/nome)
+  Fin.classeDivida = function (DB, dv) { return classeDivCfg(Fin.config(DB), dv); };
+  // chave do cartão da dívida; null quando é empréstimo/financiamento ou não cita cartão
+  Fin.cartaoDivida = function (DB, dv) { return cartaoDivCfg(Fin.config(DB), dv); };
+  // classe null/'' remove o override
+  Fin.setDivClasse = function (DB, dvId, classe) {
+    var cfg = Fin.config(DB);
+    if (classe === null || classe === undefined || classe === '') delete cfg.divClasse[dvId];
+    else if (CLASSES_DIV.indexOf(classe) >= 0) cfg.divClasse[dvId] = classe;
+    else throw new Error('Classe de dívida inválida: ' + classe);
+    return Fin.setConfig(DB, cfg);
+  };
+
+  Fin.cartaoDespesa = function (d) { return cartaoDe(d && d.name); };
+  // 'assinatura' | 'cartao' | 'divida' | 'fixa' | 'variavel'
+  Fin.classeDespesa = function (DB, d) {
+    var cfg = Fin.config(DB), nome = d && d.name;
+    if (temNome(cfg.assinaturas, nome)) return 'assinatura';
+    if (cartaoDe(nome)) return 'cartao';
+    if (temNome(cfg.despDivida, nome)) return 'divida';
+    return d && d.tipo === 'fixa' ? 'fixa' : 'variavel';
+  };
+
+  // ===================== faturas de cartão =====================
+  function dividaPorId(DB, id) {
+    var dvs = (DB && DB.dividas) || [];
+    for (var i = 0; i < dvs.length; i++) if (dvs[i] && dvs[i].id === id) return dvs[i];
+    return null;
+  }
+  function despesaPorId(DB, ano, id) {
+    var Y = ano0(DB, ano), ds = (Y && Y.despesas) || [];
+    for (var i = 0; i < ds.length; i++) if (ds[i] && ds[i].id === id) return ds[i];
+    return null;
+  }
+  // { itens:[...], total, pago, falta } em reais. Parcela com status 'Pago' (coberta por pagoInicial ou
+  // amortização, mesmo sem pagamento no mês) conta como paga por inteiro.
+  Fin.faturaDoMes = function (DB, ano, mes0, cartaoKey) {
+    var cfg = Fin.config(DB), itens = [], totC = 0, pagoC = 0;
+    if (!cartaoKey) return { itens: itens, total: 0, pago: 0, falta: 0 };
+    Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
+      var dv = dividaPorId(DB, l.dvId);
+      if (!dv || cartaoDivCfg(cfg, dv) !== cartaoKey) return;
+      var valC = c(l.valor), pC = l.status === 'Pago' ? valC : Math.min(valC, c(l.pago));
+      itens.push({ tipo: 'parcela', dvId: l.dvId, name: dv.name, valor: r(valC), pago: r(pC), status: l.status, k: l.k, qtd: l.qtd });
+      totC += valC; pagoC += pC;
+    });
+    var Y = ano0(DB, ano);
+    ((Y && Y.despesas) || []).forEach(function (d) {
+      if (Fin.cartaoDespesa(d) !== cartaoKey) return;
+      var st = d.status ? (d.status[mes0] || '') : '', valC = vC(d, mes0);
+      if (valC <= 0 || st === 'N/A') return;
+      itens.push({ tipo: 'despesa', id: d.id, name: d.name, valor: r(valC), status: st });
+      totC += valC;
+      if (st === 'Pago') pagoC += valC;
+    });
+    return { itens: itens, total: r(totC), pago: r(pagoC), falta: r(Math.max(0, totC - pagoC)) };
+  };
+  // Paga a fatura inteira do mês (muta DB). Parcela em aberto recebe pagamentos[ym] = valor da linha
+  // (a linha continua com o mesmo valor: não há dupla contagem); despesa do cartão vira 'Pago'.
+  // Devolve o token para desfazerFatura.
+  Fin.pagarFatura = function (DB, ano, mes0, cartaoKey) {
+    var tok = { parc: [], desp: [] }, alvo = ym(ano, mes0), cfg = Fin.config(DB);
+    if (!cartaoKey) return tok;
+    Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
+      var dv = dividaPorId(DB, l.dvId);
+      if (!dv || cartaoDivCfg(cfg, dv) !== cartaoKey || l.status === 'Pago') return;
+      var tem = dv.pagamentos && Object.prototype.hasOwnProperty.call(dv.pagamentos, alvo);
+      tok.parc.push({ dvId: dv.id, ym: alvo, antes: tem ? dv.pagamentos[alvo] : null });
+      Fin.pagarParcela(dv, alvo, l.valor);
+    });
+    var Y = ano0(DB, ano);
+    ((Y && Y.despesas) || []).forEach(function (d) {
+      if (Fin.cartaoDespesa(d) !== cartaoKey || vC(d, mes0) <= 0) return;
+      if (!d.status) d.status = s12();
+      var st = d.status[mes0] || '';
+      if (st === 'Pago' || st === 'N/A') return;
+      tok.desp.push({ ano: String(ano), id: d.id, m: mes0, antes: st });
+      d.status[mes0] = 'Pago';
+    });
+    return tok;
+  };
+  Fin.desfazerFatura = function (DB, token) {
+    var i, t;
+    var parc = (token && token.parc) || [], desp = (token && token.desp) || [];
+    for (i = parc.length - 1; i >= 0; i--) {
+      t = parc[i];
+      var dv = dividaPorId(DB, t.dvId);
+      if (!dv) continue;
+      if (!dv.pagamentos || typeof dv.pagamentos !== 'object') dv.pagamentos = {};
+      if (t.antes === null || t.antes === undefined) delete dv.pagamentos[t.ym];
+      else dv.pagamentos[t.ym] = t.antes;
+    }
+    for (i = desp.length - 1; i >= 0; i--) {
+      t = desp[i];
+      var d = despesaPorId(DB, t.ano, t.id);
+      if (!d) continue;
+      if (!d.status) d.status = s12();
+      d.status[t.m] = t.antes || '';
+    }
+    return DB;
+  };
+
   // ===================== mutações de planejamento =====================
   Fin.virarAno = function (DB, novoAno) {
     var k = String(novoAno);
@@ -458,6 +625,23 @@
       item.values[i] = v;
     }
     return item;
+  };
+
+  // Grava o mesmo valor de de..ate (0-11) num item planejado. Pula meses 'Pago'/'N/A', salvo
+  // opcoes.incluirPagos. Nunca mexe no status. Devolve {alterados:[k], pulados:[k]}.
+  Fin.editarValores = function (item, de, ate, valor, opcoes) {
+    var v = rd(valor), incl = !!(opcoes && opcoes.incluirPagos), out = { alterados: [], pulados: [] };
+    var a = Math.max(0, Math.floor(Number(de) || 0));
+    var b = (ate === undefined || ate === null || ate === '') ? 11 : Math.min(11, Math.floor(Number(ate)));
+    if (!isFinite(b)) b = 11;
+    if (!item.values) item.values = z12();
+    for (var k = a; k <= b; k++) {
+      var st = item.status ? item.status[k] : '';
+      if (!incl && (st === 'Pago' || st === 'N/A')) { out.pulados.push(k); continue; }
+      item.values[k] = v;
+      out.alterados.push(k);
+    }
+    return out;
   };
 
   // ===================== normalização, contagem, assinatura =====================
