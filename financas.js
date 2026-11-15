@@ -7,7 +7,8 @@
  * Dinheiro guardado em reais com 2 casas; todo cálculo em centavos inteiros.
  * Funções de cálculo não mutam a entrada. Só mutam: pagarParcela,
  * desfazerPagamento, amortizar, propagarFixa, editarValores, virarAno,
- * pagarFatura, desfazerFatura, encerrar/reabrirDespesa e setConfig/marcar/setDivClasse.
+ * pagarFatura, desfazerFatura, encerrar/reabrirDespesa, setConfig/marcar/setDivClasse,
+ * setDim/renomearMeta, setCategoria/addCategoria e converterEmDivida/desfazerConversao.
  */
 (function (root) {
   'use strict';
@@ -304,14 +305,15 @@
     if (!Y) return null;
     var prev = totaisAnoInterno(DB, Number(k) - 1, hojeYM, memo, cache);
     var sobraC = prev ? c(prev[11].saldo) : 0;
-    var out = [], cfg = Fin.config(DB);
+    var out = [], raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw);
+    // obrigação de cada renda (meta > listas): item nas duas listas conta só como financiamento
+    var obrR = (Y.renda || []).map(function (x) { return obrigRenda(cfg, meta, x); });
     for (var m = 0; m < 12; m++) {
       var rendaC = 0, extraC = 0, finC = 0, despC = 0, resC = 0, pend = 0, i;
-      // item nas duas listas conta só como financiamento (não é descontado duas vezes)
-      (Y.renda || []).forEach(function (x) {
+      (Y.renda || []).forEach(function (x, ix) {
         var v = vC(x, m); rendaC += v;
-        if (temNome(cfg.rendaFinanc, x.name)) finC += v;
-        else if (temNome(cfg.rendaExtra, x.name)) extraC += v;
+        if (obrR[ix] === 'financiamento') finC += v;
+        else if (obrR[ix] === 'extra') extraC += v;
       });
       (Y.reserva || []).forEach(function (x) { resC += vC(x, m); });
       for (i = 0; i < (Y.despesas || []).length; i++) {
@@ -385,6 +387,13 @@
     out.divClasse = dc;
     return out;
   }
+  // dados crus do registro de configuração (SOMENTE LEITURA: não mutar o retorno)
+  function cfgDadosRO(DB) {
+    var g = cfgRegistro(DB);
+    return (g && g.dados && typeof g.dados === 'object' && !Array.isArray(g.dados)) ? g.dados : {};
+  }
+  function objOuVazio(o) { return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  function metaMapa(raw) { return objOuVazio(raw && raw.meta); }
   // {rendaExtra, despDivida, assinaturas, rendaFinanc: [nomes], divClasse: {dvId: classe}} (cópia)
   Fin.config = function (DB) {
     var g = cfgRegistro(DB);
@@ -409,6 +418,14 @@
     l = l.filter(function (x) { return normNome(x) !== n; });
     if (ligado) l.push(String(nome));
     cfg[lista] = l;
+    // escrita pelas listas antigas: a obrigação explícita (meta) daquele nome sai, e as listas voltam a valer
+    var meta = clone(metaMapa(cfgDadosRO(DB)));
+    var chave = (lista === 'rendaExtra' || lista === 'rendaFinanc' ? 'r:' : 'd:') + n;
+    if (meta[chave] && meta[chave].obrigacao !== undefined) {
+      delete meta[chave].obrigacao;
+      if (!Object.keys(meta[chave]).length) delete meta[chave];
+      cfg.meta = meta;
+    }
     return Fin.setConfig(DB, cfg);
   };
   // Conta encerrada: do mês em diante, tudo "N/A" e sem valor (até dezembro).
@@ -485,14 +502,36 @@
     if (cartaoDe(dv.credor) || cartaoDe(dv.name)) return 'compra';
     return 'outra';
   }
+  // cartão da dívida pela heurística antiga: null quando é empréstimo/financiamento ou não cita cartão
   function cartaoDivCfg(cfg, dv) {
     if (!dv || classeDivCfg(cfg, dv) === 'emprestimo') return null;
     return cartaoDe(dv.credor) || cartaoDe(dv.name);
   }
+  function temProp(o, k) { return !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k); }
+  function chaveCartaoValida(k) {
+    for (var i = 0; i < Fin.CARTOES.length; i++) if (Fin.CARTOES[i].k === k) return true;
+    return false;
+  }
+  // cartão explícito na meta: '' = "sem cartão" (null); chave válida = aquele cartão; ausente = automático (undefined)
+  function cartaoMeta(mt) {
+    if (!temProp(mt, 'cartao')) return undefined;
+    if (mt.cartao === '' || mt.cartao === null) return null;
+    return chaveCartaoValida(mt.cartao) ? mt.cartao : undefined;
+  }
+  function cartaoDivMeta(cfg, meta, dv) {
+    if (!dv) return null;
+    var cm = cartaoMeta(meta['dv:' + dv.id]);
+    return cm !== undefined ? cm : cartaoDivCfg(cfg, dv);
+  }
+  function cartaoDespMeta(meta, d) {
+    if (!d) return null;
+    var cm = cartaoMeta(meta['d:' + normNome(d.name)]);
+    return cm !== undefined ? cm : cartaoDe(d.name);
+  }
   // 'emprestimo' | 'compra' | 'outra' (override da configuração > nome > cartão no credor/nome)
   Fin.classeDivida = function (DB, dv) { return classeDivCfg(Fin.config(DB), dv); };
-  // chave do cartão da dívida; null quando é empréstimo/financiamento ou não cita cartão
-  Fin.cartaoDivida = function (DB, dv) { return cartaoDivCfg(Fin.config(DB), dv); };
+  // chave do cartão da dívida (meta > heurística); null quando empréstimo ou sem cartão
+  Fin.cartaoDivida = function (DB, dv) { var raw = cfgDadosRO(DB); return cartaoDivMeta(cfgNorm(raw), metaMapa(raw), dv); };
   // classe null/'' remove o override
   Fin.setDivClasse = function (DB, dvId, classe) {
     var cfg = Fin.config(DB);
@@ -502,14 +541,435 @@
     return Fin.setConfig(DB, cfg);
   };
 
-  Fin.cartaoDespesa = function (d) { return cartaoDe(d && d.name); };
-  // 'assinatura' | 'cartao' | 'divida' | 'fixa' | 'variavel'
+  // Fin.cartaoDespesa(d): só pelo nome (compatibilidade). Fin.cartaoDespesa(DB, d): dimensão cartão (meta > nome).
+  Fin.cartaoDespesa = function (a, b) {
+    if (arguments.length >= 2) return cartaoDespMeta(metaMapa(cfgDadosRO(a)), b);
+    return cartaoDe(a && a.name);
+  };
+  // 'assinatura' | 'cartao' | 'divida' | 'fixa' | 'variavel' (obrigação 'conta' vira o tipo do item)
   Fin.classeDespesa = function (DB, d) {
-    var cfg = Fin.config(DB), nome = d && d.name;
+    var raw = cfgDadosRO(DB), o = obrigDesp(cfgNorm(raw), metaMapa(raw), d);
+    return o === 'conta' ? (d && d.tipo === 'fixa' ? 'fixa' : 'variavel') : o;
+  };
+
+  // ===================== [15/11 b] dimensões do registro =====================
+  // ref = {kind:'desp', ano, item} | {kind:'renda', ano, item} | {kind:'div', item: dv}
+  // meta em config.meta: 'd:'+normNome(nome) | 'r:'+normNome(nome) | 'dv:'+id (cópias planejadas de anos
+  // diferentes compartilham a meta pelo nome).
+  var OBRIGACOES = {
+    desp: ['conta', 'assinatura', 'cartao', 'divida'],
+    renda: ['renda', 'extra', 'financiamento'],
+    div: ['compra', 'emprestimo', 'outra']
+  };
+  var MEIOS = ['pix', 'dinheiro', 'debito', 'credito', 'boleto', 'transferencia', ''];
+  var COMPORTAMENTOS = ['fixa', 'variavel'];
+  var CAMPOS_DIM = ['obrigacao', 'comportamento', 'categoria', 'subcategoria', 'meio', 'cartao'];
+  Fin.OBRIGACOES = clone(OBRIGACOES);
+  Fin.MEIOS = MEIOS.slice();
+
+  function checarRef(ref) {
+    if (!ref || !ref.item || !OBRIGACOES[ref.kind]) throw new Error('Referência de registro inválida.');
+  }
+  function chaveMeta(ref) {
+    checarRef(ref);
+    if (ref.kind === 'div') return 'dv:' + ref.item.id;
+    return (ref.kind === 'desp' ? 'd:' : 'r:') + normNome(ref.item.name);
+  }
+  Fin.chaveMeta = chaveMeta;
+
+  function obrigDesp(cfg, meta, d) {
+    var nome = d && d.name, mt = meta['d:' + normNome(nome)];
+    if (mt && OBRIGACOES.desp.indexOf(mt.obrigacao) >= 0) return mt.obrigacao;
     if (temNome(cfg.assinaturas, nome)) return 'assinatura';
-    if (cartaoDe(nome)) return 'cartao';
+    if (cartaoDespMeta(meta, d)) return 'cartao';
     if (temNome(cfg.despDivida, nome)) return 'divida';
-    return d && d.tipo === 'fixa' ? 'fixa' : 'variavel';
+    return 'conta';
+  }
+  function obrigRenda(cfg, meta, x) {
+    var nome = x && x.name, mt = meta['r:' + normNome(nome)];
+    if (mt && OBRIGACOES.renda.indexOf(mt.obrigacao) >= 0) return mt.obrigacao;
+    if (temNome(cfg.rendaFinanc, nome)) return 'financiamento';
+    if (temNome(cfg.rendaExtra, nome)) return 'extra';
+    return 'renda';
+  }
+
+  function dimInterno(DB, raw, ref) {
+    var cfg = cfgNorm(raw), meta = metaMapa(raw), key = chaveMeta(ref), mt = objOuVazio(meta[key]);
+    var it = ref.item, kind = ref.kind, icones = objOuVazio(raw.icones), o = {};
+    o.natureza = kind === 'desp' ? 'despesa' : (kind === 'renda' ? 'renda' : 'divida');
+    if (kind === 'desp') o.obrigacao = obrigDesp(cfg, meta, it);
+    else if (kind === 'renda') o.obrigacao = obrigRenda(cfg, meta, it);
+    else o.obrigacao = classeDivCfg(cfg, it);
+    // desp/renda: o comportamento mora em item.tipo (setDim grava em todas as cópias de mesmo nome)
+    if (kind === 'div') o.comportamento = COMPORTAMENTOS.indexOf(mt.comportamento) >= 0 ? mt.comportamento : 'variavel';
+    else o.comportamento = it.tipo === 'fixa' ? 'fixa' : 'variavel';
+    var ic = icones[normNome(it.name)];
+    o.categoria = (typeof mt.categoria === 'string' && mt.categoria) ? mt.categoria
+      : ((typeof ic === 'string' && ic) ? ic : Fin.categoriaPorNome(it.name));
+    o.subcategoria = typeof mt.subcategoria === 'string' ? mt.subcategoria : '';
+    if (kind === 'div') o.cartao = cartaoDivMeta(cfg, meta, it);
+    else if (kind === 'desp') o.cartao = cartaoDespMeta(meta, it);
+    else { var cr = cartaoMeta(mt); o.cartao = cr === undefined ? null : cr; }
+    if (temProp(mt, 'meio') && MEIOS.indexOf(mt.meio) >= 0) o.meio = mt.meio;
+    else if (kind === 'div') o.meio = o.obrigacao === 'compra' ? 'credito' : '';
+    else if (kind === 'desp') o.meio = (o.obrigacao === 'cartao' || o.cartao) ? 'credito' : '';
+    else o.meio = '';
+    if (kind === 'div') {
+      var res = Fin.divResumo(it, ymHoje()), q = qtdDe(it);
+      o.recorrencia = it.situacao === 'radar' ? 'indefinida' : (q > 1 ? 'parcelada' : (q === 1 ? 'unica' : 'indefinida'));
+      o.parcelas = { qtd: q, pagas: res.pagas, restantes: res.restantes };
+    } else {
+      o.recorrencia = (o.comportamento === 'fixa' || o.obrigacao === 'assinatura') ? 'mensal' : 'variavel';
+      o.parcelas = null;
+    }
+    o.chave = key;
+    return o;
+  }
+  // todas as dimensões do registro: meta quando gravada; senão derivadas das listas antigas e do nome
+  Fin.dim = function (DB, ref) { return dimInterno(DB, cfgDadosRO(DB), ref); };
+
+  function itensMesmoNome(DB, kind, nome) {
+    var out = [], n = normNome(nome), lista = kind === 'desp' ? 'despesas' : 'renda';
+    Object.keys((DB && DB.years) || {}).forEach(function (y) {
+      ((DB.years[y] || {})[lista] || []).forEach(function (x) { if (x && normNome(x.name) === n) out.push(x); });
+    });
+    return out;
+  }
+  function listaSet(cfg, lista, nome, ligado) {
+    var n = normNome(nome);
+    cfg[lista] = (cfg[lista] || []).filter(function (x) { return normNome(x) !== n; });
+    if (ligado) cfg[lista].push(String(nome));
+  }
+
+  // Grava as dimensões (só os campos conhecidos). null/undefined = volta ao automático.
+  // Nunca mexe em valores, status nem pagamentos. Devolve Fin.dim atualizado.
+  Fin.setDim = function (DB, ref, patch) {
+    var key = chaveMeta(ref), kind = ref.kind, it = ref.item;
+    patch = patch || {};
+    var campos = Object.keys(patch).filter(function (k) { return CAMPOS_DIM.indexOf(k) >= 0; });
+    var cats = null;
+    // 1) valida tudo antes de gravar qualquer coisa
+    campos.forEach(function (k) {
+      var v = patch[k];
+      if (v === null || v === undefined) return;
+      if (k === 'obrigacao' && OBRIGACOES[kind].indexOf(v) < 0) throw new Error('Obrigação inválida para este registro: ' + v);
+      if (k === 'comportamento' && COMPORTAMENTOS.indexOf(v) < 0) throw new Error('Comportamento inválido: ' + v);
+      if (k === 'meio' && MEIOS.indexOf(v) < 0) throw new Error('Meio de pagamento inválido: ' + v);
+      if (k === 'cartao' && v !== '' && !chaveCartaoValida(v)) throw new Error('Cartão inválido: ' + v);
+      if (k === 'categoria') {
+        cats = cats || Fin.categorias(DB);
+        if (!cats.some(function (c0) { return c0.k === v; })) throw new Error('Categoria inexistente: ' + v);
+      }
+      if (k === 'subcategoria' && typeof v !== 'string') throw new Error('Subcategoria deve ser texto.');
+    });
+    // 2) aplica
+    var raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = clone(metaMapa(raw));
+    var icones = clone(objOuVazio(raw.icones)), mexeuIcones = false;
+    var mt = objOuVazio(meta[key]), nIc = normNome(it.name);
+    campos.forEach(function (k) {
+      var v = patch[k], limpar = v === null || v === undefined;
+      if (k === 'obrigacao') {
+        if (kind === 'div') {
+          if (limpar) delete cfg.divClasse[it.id]; else cfg.divClasse[it.id] = v;
+        } else if (kind === 'desp') {
+          if (limpar) delete mt.obrigacao; else mt.obrigacao = v;
+          listaSet(cfg, 'assinaturas', it.name, v === 'assinatura');
+          listaSet(cfg, 'despDivida', it.name, v === 'divida');
+        } else {
+          if (limpar) delete mt.obrigacao; else mt.obrigacao = v;
+          listaSet(cfg, 'rendaExtra', it.name, v === 'extra');
+          listaSet(cfg, 'rendaFinanc', it.name, v === 'financiamento');
+        }
+      } else if (k === 'comportamento') {
+        if (limpar) { if (kind === 'div') delete mt.comportamento; return; }
+        if (kind === 'div') { mt.comportamento = v; return; }
+        it.tipo = v;
+        itensMesmoNome(DB, kind, it.name).forEach(function (x) { x.tipo = v; });
+      } else if (k === 'categoria') {
+        mexeuIcones = true;
+        if (limpar) { delete mt.categoria; delete icones[nIc]; } else { mt.categoria = v; icones[nIc] = v; }
+      } else if (k === 'subcategoria') {
+        var s = limpar ? '' : String(v).trim();
+        if (s) mt.subcategoria = s; else delete mt.subcategoria;
+      } else if (k === 'meio' || k === 'cartao') {
+        if (limpar) delete mt[k]; else mt[k] = v;
+      }
+    });
+    if (Object.keys(mt).length) meta[key] = mt; else delete meta[key];
+    var upd = { rendaExtra: cfg.rendaExtra, despDivida: cfg.despDivida, assinaturas: cfg.assinaturas,
+      rendaFinanc: cfg.rendaFinanc, divClasse: cfg.divClasse, meta: meta };
+    if (mexeuIcones) upd.icones = icones;
+    Fin.setConfig(DB, upd);
+    return Fin.dim(DB, ref);
+  };
+
+  // Leva a meta (e a presença nas listas antigas e em 'icones') do nome antigo para o novo.
+  // kind 'desp' | 'renda'. Dívida usa o id: nada a mover. Não renomeia os itens.
+  Fin.renomearMeta = function (DB, kind, nomeAntigo, nomeNovo) {
+    if (kind !== 'desp' && kind !== 'renda') return DB;
+    var a = normNome(nomeAntigo), b = normNome(nomeNovo);
+    if (!b) throw new Error('Informe o novo nome.');
+    var raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = clone(metaMapa(raw)), icones = clone(objOuVazio(raw.icones));
+    var pre = kind === 'desp' ? 'd:' : 'r:';
+    if (meta[pre + a] && a !== b) {
+      var junto = objOuVazio(meta[pre + b]), velho = meta[pre + a];
+      Object.keys(velho).forEach(function (k) { junto[k] = velho[k]; });
+      meta[pre + b] = junto;
+      delete meta[pre + a];
+    }
+    var listas = kind === 'desp' ? ['assinaturas', 'despDivida'] : ['rendaExtra', 'rendaFinanc'];
+    listas.forEach(function (l) {
+      if (!temNome(cfg[l], nomeAntigo)) return;
+      listaSet(cfg, l, nomeAntigo, false);
+      listaSet(cfg, l, nomeNovo, true);
+    });
+    var upd = { meta: meta };
+    listas.forEach(function (l) { upd[l] = cfg[l]; });
+    if (temProp(icones, a) && a !== b) { icones[b] = icones[a]; delete icones[a]; upd.icones = icones; }
+    return Fin.setConfig(DB, upd);
+  };
+
+  // ---------- atividade, visibilidade e status do mês (independentes da classificação) ----------
+  function anoRef(ref) { return String(ref && ref.ano ? ref.ano : new Date().getFullYear()); }
+  // desp: 'ativa' | 'sem-cobranca' | 'encerrada' ('cancelada' se assinatura); renda: 'ativa' | 'sem-cobranca';
+  // div: 'ativa' | 'radar' | 'quitada' | 'encerrada'
+  Fin.atividade = function (DB, ref, mes0) {
+    checarRef(ref);
+    var it = ref.item, m = Math.max(0, Math.min(11, Math.floor(Number(mes0) || 0)));
+    if (ref.kind === 'div') {
+      var st = Fin.divResumo(it, ym(anoRef(ref), m)).status;
+      if (st === 'quitada' || st === 'encerrada' || st === 'radar') return st;
+      return 'ativa';
+    }
+    if (ref.kind === 'desp' && Fin.encerradaDesde(it, m)) {
+      var raw = cfgDadosRO(DB);
+      return obrigDesp(cfgNorm(raw), metaMapa(raw), it) === 'assinatura' ? 'cancelada' : 'encerrada';
+    }
+    return Fin.ativoDesde(it, m) ? 'ativa' : 'sem-cobranca';
+  };
+  // 'principal' (ativa ou radar) | 'historico'
+  Fin.visivel = function (DB, ref, mes0) {
+    var a = Fin.atividade(DB, ref, mes0);
+    return a === 'ativa' || a === 'radar' ? 'principal' : 'historico';
+  };
+  // status de pagamento só daquele mês. desp: statusExibido; div: status da linha do mês ou null; renda: gravado ou null
+  Fin.statusMes = function (DB, ref, mes0, hojeYM) {
+    checarRef(ref);
+    var ano = anoRef(ref);
+    if (ref.kind === 'desp') return Fin.statusExibido(ref.item, ano, mes0, hojeYM);
+    if (ref.kind === 'renda') return ref.item.status ? (ref.item.status[mes0] || '') : null;
+    var ls = linhasDoMes(DB, ym(ano, mes0), {});
+    for (var i = 0; i < ls.length; i++) if (ls[i].dvId === ref.item.id) return ls[i].status;
+    return null;
+  };
+
+  // ---------- filtros por dimensão ----------
+  Fin.FILTROS = ['todas', 'fixas', 'variaveis', 'assinaturas', 'cartoes', 'dividas'];
+  Fin.passaFiltro = function (DB, ref, chave) {
+    if (Fin.FILTROS.indexOf(chave) < 0) throw new Error('Filtro inválido: ' + chave);
+    if (chave === 'todas') return true;
+    var d = Fin.dim(DB, ref);
+    switch (chave) {
+      case 'fixas': return d.comportamento === 'fixa' && d.obrigacao === 'conta';
+      case 'variaveis': return d.comportamento === 'variavel' && d.obrigacao === 'conta';
+      case 'assinaturas': return d.obrigacao === 'assinatura';
+      case 'cartoes': return d.cartao !== null || d.obrigacao === 'cartao' || (d.natureza === 'divida' && d.obrigacao === 'compra');
+      default: return d.natureza === 'divida' || d.obrigacao === 'divida';
+    }
+  };
+
+  // ---------- categorias ----------
+  Fin.CATEGORIAS = [
+    { k: 'casa', n: 'Casa e moradia', icone: '🏠' },
+    { k: 'contas', n: 'Luz, água e gás', icone: '💡' },
+    { k: 'telefone', n: 'Telefone e internet', icone: '📱' },
+    { k: 'mercado', n: 'Mercado', icone: '🛒' },
+    { k: 'alimentacao', n: 'Restaurante e delivery', icone: '🍽️' },
+    { k: 'transporte', n: 'Transporte e carro', icone: '🚗' },
+    { k: 'saude', n: 'Saúde', icone: '🩺' },
+    { k: 'educacao', n: 'Educação', icone: '🎓' },
+    { k: 'lazer', n: 'Lazer e assinaturas', icone: '🎬' },
+    { k: 'roupas', n: 'Roupas e beleza', icone: '👕' },
+    { k: 'presentes', n: 'Presentes', icone: '🎁' },
+    { k: 'itens-casa', n: 'Itens para casa', icone: '🛋️' },
+    { k: 'viagem', n: 'Viagem', icone: '✈️' },
+    { k: 'pets', n: 'Pets', icone: '🐾' },
+    { k: 'financeiro', n: 'Banco, taxas e empréstimos', icone: '🏦' },
+    { k: 'impostos', n: 'Impostos e documentos', icone: '📋' },
+    { k: 'renda', n: 'Salário e renda', icone: '💰' },
+    { k: 'outros', n: 'Outros', icone: '📌' }
+  ];
+  // ordem importa: o primeiro grupo com a palavra inteira (ou no plural com 's') ganha
+  var PALAVRAS_CAT = [
+    ['impostos', ['das', 'iptu', 'ipva', 'imposto']],
+    ['financeiro', ['emprestimo', 'consorcio', 'financiamento', 'limite', 'banco']],
+    ['casa', ['aluguel', 'condominio', 'garagem', 'limpeza', 'moradia']],
+    ['contas', ['luz', 'agua', 'gas', 'energia']],
+    ['telefone', ['vivo', 'claro', 'tim', 'internet']],
+    ['mercado', ['mercado', 'supermercado', 'padaria']],
+    ['alimentacao', ['restaurante', 'ifood', 'delivery']],
+    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento']],
+    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'gympass', 'academia']],
+    ['educacao', ['faculdade', 'curso', 'livro', 'kindle', 'escola']],
+    ['lazer', ['netflix', 'spotify', 'spotfy', 'claude', 'icloud', 'amazon']],
+    ['roupas', ['renner', 'c&a', 'h&m', 'roupa', 'tenis', 'barbearia', 'barbeiro', 'maquiagem', 'perfume']],
+    ['presentes', ['presente']],
+    ['viagem', ['viagem', 'airbnb', 'passeio']],
+    ['pets', ['pet', 'racao', 'veterinario']],
+    ['renda', ['salario', 'comissao', '13º', '13°', 'ferias', 'plr', 'vale']]
+  ];
+  function palavras(s) { return normNome(s).replace(/[^a-z0-9º°&]+/g, ' ').trim(); }
+  // chave de categoria adivinhada pelo nome; 'outros' quando nada bate
+  Fin.categoriaPorNome = function (nome) {
+    var p = palavras(nome);
+    if (!p) return 'outros';
+    var s = ' ' + p + ' ';
+    for (var i = 0; i < PALAVRAS_CAT.length; i++) {
+      var ws = PALAVRAS_CAT[i][1];
+      for (var j = 0; j < ws.length; j++) {
+        var w = palavras(ws[j]);
+        if (s.indexOf(' ' + w + ' ') >= 0 || s.indexOf(' ' + w + 's ') >= 0) return PALAVRAS_CAT[i][0];
+      }
+    }
+    return 'outros';
+  };
+  function catsCfg(raw) { return objOuVazio(raw && raw.categorias); }
+  // padrões (com nome/ícone editados) + personalizadas: [{k, n, icone, padrao}]
+  Fin.categorias = function (DB) {
+    var ov = catsCfg(cfgDadosRO(DB)), out = [], vistos = {};
+    Fin.CATEGORIAS.forEach(function (c0) {
+      var o = objOuVazio(ov[c0.k]);
+      out.push({ k: c0.k, n: (typeof o.n === 'string' && o.n.trim()) ? o.n : c0.n,
+        icone: (typeof o.icone === 'string' && o.icone) ? o.icone : c0.icone, padrao: true });
+      vistos[c0.k] = true;
+    });
+    Object.keys(ov).forEach(function (k) {
+      if (vistos[k]) return;
+      var o = objOuVazio(ov[k]);
+      if (typeof o.n !== 'string' || !o.n.trim()) return;
+      out.push({ k: k, n: o.n, icone: (typeof o.icone === 'string' && o.icone) ? o.icone : '📌', padrao: false });
+    });
+    return out;
+  };
+  // edita nome e/ou ícone de uma categoria existente (padrão ou personalizada)
+  Fin.setCategoria = function (DB, k, dados) {
+    if (!Fin.categorias(DB).some(function (c0) { return c0.k === k; })) throw new Error('Categoria inexistente: ' + k);
+    dados = dados || {};
+    var cats = clone(catsCfg(cfgDadosRO(DB))), o = objOuVazio(cats[k]);
+    if (dados.n !== undefined) {
+      var n = String(dados.n == null ? '' : dados.n).trim();
+      if (!n) throw new Error('Informe o nome da categoria.');
+      o.n = n;
+    }
+    if (dados.icone !== undefined && String(dados.icone || '').trim()) o.icone = String(dados.icone).trim();
+    cats[k] = o;
+    Fin.setConfig(DB, { categorias: cats });
+    return k;
+  };
+  // cria categoria personalizada; devolve a chave (slug único)
+  Fin.addCategoria = function (DB, dados) {
+    dados = dados || {};
+    var n = String(dados.n == null ? '' : dados.n).trim();
+    if (!n) throw new Error('Informe o nome da categoria.');
+    var base = normNome(n).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'categoria';
+    var existentes = {};
+    Fin.categorias(DB).forEach(function (c0) { existentes[c0.k] = true; });
+    var k = base, i = 2;
+    while (existentes[k]) k = base + '-' + (i++);
+    var cats = clone(catsCfg(cfgDadosRO(DB)));
+    cats[k] = { n: n, icone: String(dados.icone || '').trim() || '📌' };
+    Fin.setConfig(DB, { categorias: cats });
+    return k;
+  };
+  Fin.iconeCategoria = function (DB, k) {
+    var cs = Fin.categorias(DB);
+    for (var i = 0; i < cs.length; i++) if (cs[i].k === k) return cs[i].icone;
+    return '📌';
+  };
+
+  // ---------- conversão de despesa em dívida (prévia, aplicação, desfazer) ----------
+  // Meses do ano com valor > 0 e status ≠ 'N/A'. Pagamentos só dos meses 'Pago' (nunca inventa datas).
+  // Para o saldo de cada mês ficar idêntico, os meses precisam ser seguidos e com o mesmo valor
+  // (a dívida tem parcela única); senão ok=false e motivo explica.
+  Fin.previaConverterEmDivida = function (DB, ano, despId) {
+    var d = despesaPorId(DB, ano, despId);
+    if (!d) throw new Error('Despesa não encontrada.');
+    var meses = [], pag = {}, i, totC = 0;
+    for (var m = 0; m < 12; m++) {
+      var st = d.status ? (d.status[m] || '') : '';
+      if (vC(d, m) <= 0 || st === 'N/A') continue;
+      meses.push(m);
+      totC += vC(d, m);
+      if (st === 'Pago') pag[ym(ano, m)] = r(vC(d, m));
+    }
+    var out = { nome: d.name, total: r(totC), qtd: meses.length, inicio: meses.length ? ym(ano, meses[0]) : '',
+      parcela: meses.length ? r(vC(d, meses[0])) : 0, pagamentos: pag, mesesAfetados: meses, ok: true, motivo: '' };
+    if (!meses.length) { out.ok = false; out.motivo = 'A despesa não tem meses com valor neste ano.'; return out; }
+    for (i = 1; i < meses.length; i++) {
+      if (meses[i] !== meses[i - 1] + 1) { out.ok = false; out.motivo = 'Os meses com valor não são seguidos: a parcela cairia em mês sem cobrança.'; return out; }
+      if (vC(d, meses[i]) !== vC(d, meses[0])) { out.ok = false; out.motivo = 'Os valores mudam de um mês para outro: a dívida tem parcela única.'; return out; }
+    }
+    return out;
+  };
+  // opcoes: {credor, classe:'compra'|'emprestimo'|'outra', cartao, agora: Date|ISO}. Muta DB; devolve token.
+  Fin.converterEmDivida = function (DB, ano, despId, opcoes) {
+    opcoes = opcoes || {};
+    var pv = Fin.previaConverterEmDivida(DB, ano, despId);
+    if (!pv.ok) throw new Error(pv.motivo);
+    if (opcoes.classe != null && opcoes.classe !== '' && CLASSES_DIV.indexOf(opcoes.classe) < 0) throw new Error('Classe de dívida inválida: ' + opcoes.classe);
+    if (opcoes.cartao != null && opcoes.cartao !== '' && !chaveCartaoValida(opcoes.cartao)) throw new Error('Cartão inválido: ' + opcoes.cartao);
+    var d = despesaPorId(DB, ano, despId);
+    var iso = (opcoes.agora ? new Date(opcoes.agora) : new Date()).toISOString();
+    var raw0 = cfgDadosRO(DB), tinhaCfg = !!cfgRegistro(DB), tinhaMeta = temProp(raw0, 'meta');
+    var cat = dimInterno(DB, raw0, { kind: 'desp', ano: String(ano), item: d }).categoria;
+    var dKey = 'd:' + normNome(d.name), metaAntes = temProp(metaMapa(raw0), dKey) ? clone(metaMapa(raw0)[dKey]) : null;
+    var dv = {
+      id: Fin.novoId('dv'), name: d.name, credor: String(opcoes.credor || ''),
+      obs: 'Convertida da despesa "' + d.name + '" em ' + iso.slice(0, 10), venc: d.venc || '',
+      total: pv.total, situacao: 'ativa', parcela: pv.parcela, qtd: pv.qtd, inicio: pv.inicio,
+      pagoInicial: 0, pagamentos: clone(pv.pagamentos), flags: [], criadoEm: iso
+    };
+    var valores = [], status = [];
+    if (!d.status) d.status = s12();
+    pv.mesesAfetados.forEach(function (m) {
+      valores.push(d.values[m]); status.push(d.status[m] || '');
+      d.values[m] = 0; d.status[m] = 'N/A';
+    });
+    if (!Array.isArray(DB.dividas)) DB.dividas = [];
+    DB.dividas.push(dv);
+    var meta = clone(metaMapa(cfgDadosRO(DB))), cfg = Fin.config(DB);
+    var mtD = objOuVazio(meta[dKey]);
+    mtD.convertido = { para: dv.id, meses: pv.mesesAfetados.slice(), valores: valores.slice(), status: status.slice() };
+    meta[dKey] = mtD;
+    var mtV = { categoria: cat };
+    if (opcoes.cartao != null) mtV.cartao = opcoes.cartao;
+    meta['dv:' + dv.id] = mtV;
+    var upd = { meta: meta };
+    if (opcoes.classe) { cfg.divClasse[dv.id] = opcoes.classe; upd.divClasse = cfg.divClasse; }
+    Fin.setConfig(DB, upd);
+    return { ano: String(ano), despId: despId, dvId: dv.id, meses: pv.mesesAfetados.slice(), valores: valores,
+      status: status, metaKey: dKey, metaAntes: metaAntes, tinhaCfg: tinhaCfg, tinhaMeta: tinhaMeta };
+  };
+  // restaura exatamente o estado anterior à conversão (despesa, dívida e o que a conversão gravou na configuração)
+  Fin.desfazerConversao = function (DB, token) {
+    if (!token || !token.dvId) return DB;
+    var d = despesaPorId(DB, token.ano, token.despId);
+    if (d) {
+      if (!d.status) d.status = s12();
+      token.meses.forEach(function (m, i) { d.values[m] = token.valores[i]; d.status[m] = token.status[i]; });
+    }
+    DB.dividas = (DB.dividas || []).filter(function (x) { return !x || x.id !== token.dvId; });
+    if (!token.tinhaCfg) {
+      DB.divergencias = (DB.divergencias || []).filter(function (g) { return !g || g.id !== Fin.CFG_ID; });
+      return DB;
+    }
+    var meta = clone(metaMapa(cfgDadosRO(DB))), cfg = Fin.config(DB);
+    delete meta['dv:' + token.dvId];
+    if (token.metaAntes) meta[token.metaKey] = clone(token.metaAntes); else delete meta[token.metaKey];
+    delete cfg.divClasse[token.dvId];
+    Fin.setConfig(DB, { meta: meta, divClasse: cfg.divClasse });
+    if (!token.tinhaMeta && !Object.keys(meta).length) delete cfgRegistro(DB).dados.meta;
+    return DB;
   };
 
   // ===================== faturas de cartão =====================
@@ -526,18 +986,18 @@
   // { itens:[...], total, pago, falta } em reais. Parcela com status 'Pago' (coberta por pagoInicial ou
   // amortização, mesmo sem pagamento no mês) conta como paga por inteiro.
   Fin.faturaDoMes = function (DB, ano, mes0, cartaoKey) {
-    var cfg = Fin.config(DB), itens = [], totC = 0, pagoC = 0;
+    var raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw), itens = [], totC = 0, pagoC = 0;
     if (!cartaoKey) return { itens: itens, total: 0, pago: 0, falta: 0 };
     Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
       var dv = dividaPorId(DB, l.dvId);
-      if (!dv || cartaoDivCfg(cfg, dv) !== cartaoKey) return;
+      if (!dv || cartaoDivMeta(cfg, meta, dv) !== cartaoKey) return;
       var valC = c(l.valor), pC = l.status === 'Pago' ? valC : Math.min(valC, c(l.pago));
       itens.push({ tipo: 'parcela', dvId: l.dvId, name: dv.name, valor: r(valC), pago: r(pC), status: l.status, k: l.k, qtd: l.qtd });
       totC += valC; pagoC += pC;
     });
     var Y = ano0(DB, ano);
     ((Y && Y.despesas) || []).forEach(function (d) {
-      if (Fin.cartaoDespesa(d) !== cartaoKey) return;
+      if (cartaoDespMeta(meta, d) !== cartaoKey) return;
       var st = d.status ? (d.status[mes0] || '') : '', valC = vC(d, mes0);
       if (valC <= 0 || st === 'N/A') return;
       itens.push({ tipo: 'despesa', id: d.id, name: d.name, valor: r(valC), status: st });
@@ -550,18 +1010,18 @@
   // (a linha continua com o mesmo valor: não há dupla contagem); despesa do cartão vira 'Pago'.
   // Devolve o token para desfazerFatura.
   Fin.pagarFatura = function (DB, ano, mes0, cartaoKey) {
-    var tok = { parc: [], desp: [] }, alvo = ym(ano, mes0), cfg = Fin.config(DB);
+    var tok = { parc: [], desp: [] }, alvo = ym(ano, mes0), raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw);
     if (!cartaoKey) return tok;
     Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
       var dv = dividaPorId(DB, l.dvId);
-      if (!dv || cartaoDivCfg(cfg, dv) !== cartaoKey || l.status === 'Pago') return;
+      if (!dv || cartaoDivMeta(cfg, meta, dv) !== cartaoKey || l.status === 'Pago') return;
       var tem = dv.pagamentos && Object.prototype.hasOwnProperty.call(dv.pagamentos, alvo);
       tok.parc.push({ dvId: dv.id, ym: alvo, antes: tem ? dv.pagamentos[alvo] : null });
       Fin.pagarParcela(dv, alvo, l.valor);
     });
     var Y = ano0(DB, ano);
     ((Y && Y.despesas) || []).forEach(function (d) {
-      if (Fin.cartaoDespesa(d) !== cartaoKey || vC(d, mes0) <= 0) return;
+      if (cartaoDespMeta(meta, d) !== cartaoKey || vC(d, mes0) <= 0) return;
       if (!d.status) d.status = s12();
       var st = d.status[mes0] || '';
       if (st === 'Pago' || st === 'N/A') return;
