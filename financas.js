@@ -195,13 +195,18 @@
     var out = [], dvs = (DB && DB.dividas) || [];
     for (var i = 0; i < dvs.length; i++) {
       var dv = dvs[i];
-      if (!dv || dv.situacao === 'radar' || dv.situacao === 'encerrada') continue;
+      if (!dv || dv.situacao === 'radar') continue;
       var a = cache ? (cache[dv.id] || (cache[dv.id] = analisar(dv))) : analisar(dv);
       var p = null;
       for (var j = 0; j < a.parcelas.length; j++) if (a.parcelas[j].ym === alvo) { p = a.parcelas[j]; break; }
       var mesC = a.pagC[alvo] || 0;
       var linha = { dvId: dv.id, name: '[DIV] ' + dv.name, venc: dv.venc || '', credor: dv.credor || '', ym: alvo };
-      if (p) {
+      if (dv.situacao === 'encerrada') {
+        // Encerrada: some o que ainda não foi pago, mas o que já saiu do caixa continua no mês em que saiu.
+        if (mesC <= 0) continue;
+        linha.k = p ? p.k : null; linha.qtd = a.parcelas.length; if (!p) linha.avulso = true;
+        linha.valor = r(mesC); linha.pago = r(mesC); linha.status = 'Pago';
+      } else if (p) {
         // Quitada: não gera parcela depois do último pagamento (quitou antes, por amortização ou fora do app).
         if (a.quitada && mesC <= 0 && (a.ultimoPag === null || alvo > a.ultimoPag)) continue;
         linha.k = p.k; linha.qtd = a.parcelas.length;
