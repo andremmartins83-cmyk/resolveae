@@ -303,10 +303,10 @@
     if (!Y) return null;
     var prev = totaisAnoInterno(DB, Number(k) - 1, hojeYM, memo, cache);
     var sobraC = prev ? c(prev[11].saldo) : 0;
-    var out = [];
+    var out = [], cfg = Fin.config(DB);
     for (var m = 0; m < 12; m++) {
-      var rendaC = 0, despC = 0, resC = 0, pend = 0, i;
-      (Y.renda || []).forEach(function (x) { rendaC += vC(x, m); });
+      var rendaC = 0, extraC = 0, despC = 0, resC = 0, pend = 0, i;
+      (Y.renda || []).forEach(function (x) { var v = vC(x, m); rendaC += v; if (temNome(cfg.rendaExtra, x.name)) extraC += v; });
       (Y.reserva || []).forEach(function (x) { resC += vC(x, m); });
       for (i = 0; i < (Y.despesas || []).length; i++) {
         var d = Y.despesas[i], st = d.status ? (d.status[m] || '') : '';
@@ -318,7 +318,9 @@
       var totDespC = despC + parcC;
       var saldoC = rendaC + sobraC - totDespC;
       out.push({
-        renda: r(rendaC), despProprias: r(despC), parcelas: r(parcC), despesas: r(totDespC),
+        renda: r(rendaC), rendaExtra: r(extraC), rendaRegular: r(rendaC - extraC),
+        resultado: r(rendaC - totDespC), resultadoSemExtras: r(rendaC - extraC - totDespC),
+        despProprias: r(despC), parcelas: r(parcC), despesas: r(totDespC),
         reserva: r(resC), sobraAnterior: r(sobraC), saldo: r(saldoC),
         comprometimento: rendaC > 0 ? Math.round(totDespC / rendaC * 10000) / 10000 : 0,
         comprometimentoDividas: rendaC > 0 ? Math.round(parcC / rendaC * 10000) / 10000 : 0,
@@ -347,6 +349,81 @@
     return r(tot);
   };
 
+  // ===================== configuração do app e contas encerradas =====================
+  // A configuração mora num registro da lista de divergências (tipo 'config'), porque a planilha
+  // já guarda esse registro com um campo JSON livre. Não é divergência: as telas o ignoram.
+  Fin.CFG_ID = 'cfg-app';
+  function temNome(lista, nome) {
+    var n = normNome(nome);
+    for (var i = 0; i < (lista || []).length; i++) if (normNome(lista[i]) === n) return true;
+    return false;
+  }
+  Fin.temNome = temNome;
+  Fin.config = function (DB) {
+    var gs = (DB && DB.divergencias) || [], d = {};
+    for (var i = 0; i < gs.length; i++) if (gs[i] && gs[i].id === Fin.CFG_ID) { d = gs[i].dados || {}; break; }
+    return {
+      rendaExtra: Array.isArray(d.rendaExtra) ? d.rendaExtra.slice() : [],
+      despDivida: Array.isArray(d.despDivida) ? d.despDivida.slice() : []
+    };
+  };
+  Fin.setConfig = function (DB, cfg) {
+    if (!Array.isArray(DB.divergencias)) DB.divergencias = [];
+    var dados = { rendaExtra: (cfg.rendaExtra || []).slice(), despDivida: (cfg.despDivida || []).slice() };
+    for (var i = 0; i < DB.divergencias.length; i++) if (DB.divergencias[i] && DB.divergencias[i].id === Fin.CFG_ID) { DB.divergencias[i].dados = dados; return DB; }
+    DB.divergencias.push({ id: Fin.CFG_ID, tipo: 'config', origem: 'app', descricao: 'Configuração do app (não é divergência)', dados: dados, status: 'resolvida' });
+    return DB;
+  };
+  Fin.ehDivergencia = function (g) { return !!g && g.tipo !== 'config'; };
+  // liga/desliga um nome numa lista da configuração (rendaExtra | despDivida)
+  Fin.marcar = function (DB, lista, nome, ligado) {
+    var cfg = Fin.config(DB), l = cfg[lista] || [], n = normNome(nome);
+    l = l.filter(function (x) { return normNome(x) !== n; });
+    if (ligado) l.push(String(nome));
+    cfg[lista] = l;
+    return Fin.setConfig(DB, cfg);
+  };
+  // Conta encerrada: do mês em diante, tudo "N/A" e sem valor (até dezembro).
+  Fin.encerradaDesde = function (item, mes0) {
+    if (!item || !item.status) return false;
+    for (var k = mes0; k < 12; k++) if (item.status[k] !== 'N/A' || c(item.values ? item.values[k] : 0) > 0) return false;
+    return true;
+  };
+  // primeiro mês do encerramento (0-11) ou -1
+  Fin.mesEncerramento = function (item) {
+    if (!Fin.encerradaDesde(item, 11)) return -1;
+    var m = 11;
+    while (m > 0 && Fin.encerradaDesde(item, m - 1)) m--;
+    return m;
+  };
+  function mesmosNomesDepois(DB, ano, nome) {
+    var out = [];
+    Object.keys(DB.years || {}).forEach(function (y) {
+      if (Number(y) <= Number(ano)) return;
+      (DB.years[y].despesas || []).forEach(function (d) { if (normNome(d.name) === normNome(nome)) out.push(d); });
+    });
+    return out;
+  }
+  // Encerra a conta a partir do mês (inclusive) e nos anos seguintes. Meses anteriores ficam como estão.
+  Fin.encerrarDespesa = function (DB, ano, id, mes0) {
+    var Y = DB.years[String(ano)], d = null;
+    (Y && Y.despesas || []).forEach(function (x) { if (x.id === id) d = x; });
+    if (!d) return null;
+    if (!d.status) d.status = s12();
+    for (var k = mes0; k < 12; k++) { d.values[k] = 0; d.status[k] = 'N/A'; }
+    mesmosNomesDepois(DB, ano, d.name).forEach(function (o) { o.values = z12(); o.status = ['N/A','N/A','N/A','N/A','N/A','N/A','N/A','N/A','N/A','N/A','N/A','N/A']; });
+    return d;
+  };
+  // Reabre: tira o "N/A" do mês em diante (valores continuam zerados para preencher).
+  Fin.reabrirDespesa = function (DB, ano, id, mes0) {
+    var Y = DB.years[String(ano)], d = null;
+    (Y && Y.despesas || []).forEach(function (x) { if (x.id === id) d = x; });
+    if (!d) return null;
+    for (var k = mes0; k < 12; k++) if (d.status[k] === 'N/A') d.status[k] = '';
+    mesmosNomesDepois(DB, ano, d.name).forEach(function (o) { for (var j = 0; j < 12; j++) if (o.status[j] === 'N/A') o.status[j] = ''; });
+    return d;
+  };
+
   // ===================== mutações de planejamento =====================
   Fin.virarAno = function (DB, novoAno) {
     var k = String(novoAno);
@@ -357,7 +434,7 @@
     var src = anteriores.length ? DB.years[anteriores[anteriores.length - 1]] : { despesas: [], renda: [], reserva: [] };
     function doze(x) { var v = rd(x && x.values ? x.values[11] : 0); return [v, v, v, v, v, v, v, v, v, v, v, v]; }
     var novo = {
-      despesas: (src.despesas || []).map(function (d) {
+      despesas: (src.despesas || []).filter(function (d) { return !Fin.encerradaDesde(d, 11); }).map(function (d) {
         return { id: Fin.novoId('d'), name: d.name, venc: d.venc || '', tipo: d.tipo === 'fixa' ? 'fixa' : 'variavel',
           values: d.tipo === 'fixa' ? doze(d) : z12(), status: s12() };
       }),

@@ -265,7 +265,9 @@ table.t td.tt,table.t th.tt{background:var(--ap2);font-weight:700}
 .cv.po{color:var(--g6)}.cv.ne{color:var(--tx)}.cv.ze{color:var(--t4)}.cv.b{font-weight:700;cursor:default}.cv.b:hover{background:0}
 .vc{font-size:12px;color:var(--t2)}
 .tp{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:var(--ap);color:var(--t2)}
-.tp-f{background:var(--b50);color:var(--b6)}.tp-v{background:var(--o50);color:var(--o6)}.tp-dv{background:var(--ap);color:var(--t2)}
+.tp-f{background:var(--b50);color:var(--b6)}.tp-v{background:var(--o50);color:var(--o6)}.tp-dv{background:var(--ap);color:var(--t2)}.tp-x{background:var(--o4);color:var(--t2)}
+tr.sep td{background:var(--bl);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:8px 14px}
+tr.enc td{opacity:.62}.enc-t{display:block;font-size:11px;font-weight:400;opacity:.8}.hx{display:block;margin-top:4px;opacity:.85}
 .mhi{background:rgba(49,62,39,.035)!important}.mhh{background:var(--b50)!important;color:var(--b6)!important}
 tr.dv-linha td,tr.dv-linha td.cn{background:#FBFBF8}
 tr.auto td,tr.auto td.cn{background:var(--b50)}
@@ -1102,6 +1104,11 @@ function pen(m){return T(m).pendentes}
 function avgNZ(v){var n=v.filter(function(x){return x>0});return n.length?n.reduce(function(a,b){return a+b},0)/n.length:0}
 function filtD(){if(DB.fD==='fixa')return Y().despesas.filter(function(d){return d.tipo==='fixa'});if(DB.fD==='variavel')return Y().despesas.filter(function(d){return d.tipo==='variavel'});return Y().despesas}
 function filtR(){if(DB.fR==='fixa')return Y().renda.filter(function(r){return r.tipo==='fixa'});if(DB.fR==='variavel')return Y().renda.filter(function(r){return r.tipo==='variavel'});return Y().renda}
+function CFG(){return TC.cfg||(TC.cfg=Fin.config(DB))}
+function ehDivDesp(d){return Fin.temNome(CFG().despDivida,d.name)}
+function ehExtra(it){return Fin.temNome(CFG().rendaExtra,it.name)}
+function encNoMes(d,m){return Fin.encerradaDesde(d,m)}
+function encTxt(d){var k=Fin.mesEncerramento(d);return k<0?'':'Encerrada desde '+MN[k].toLowerCase()}
 function achar(tipo,id){var l=(Y()&&Y()[tipo])||[];for(var i=0;i<l.length;i++)if(String(l[i].id)===String(id))return l[i];return null}
 function acharDiv(id){for(var i=0;i<DB.dividas.length;i++)if(String(DB.dividas[i].id)===String(id))return DB.dividas[i];return null}
 // Linhas de parcela do ano inteiro, agrupadas por divida: {dvId:{name,credor,venc,meses:[linha|null x12]}}
@@ -1118,7 +1125,7 @@ function parcelasDoAno(){
 // R() so DESENHA. Nao muta dado (Pendente e derivado pelo motor; parcela de divida e linha derivada).
 function R(){TC={};var m=DB.mo;rYS();rSB();rHD(m);rPG(m);sv()}
 function rYS(){var yrs=Object.keys(DB.years).sort(),ci=yrs.indexOf(DB.curYear);document.getElementById('yrsel').innerHTML='<button onclick="chYr(-1)" '+(ci<=0?'disabled':'')+' aria-label="Ano anterior">'+svg('chevL')+'</button><span class="yr-l">'+esc(DB.curYear)+'</span><button onclick="chYr(1)" aria-label="Próximo ano">'+svg('chev')+'</button><button class="yr-a" onclick="addYr()">+ Ano</button>'}
-function nDivergAbertas(){return DB.divergencias.filter(function(d){return d.status!=='resolvida'}).length}
+function nDivergAbertas(){return DB.divergencias.filter(function(d){return Fin.ehDivergencia(d)&&d.status!=='resolvida'}).length}
 function nDivAtrasadas(){var hj=hojeYM(),n=0;DB.dividas.forEach(function(dv){try{if(Fin.divResumo(dv,hj).status==='atrasada')n++}catch(e){}});return n}
 // contagens das insignias: uma vez por desenho (menu lateral e barra de abas usam as mesmas)
 function contagens(){return TC.cnt||(TC.cnt={p:pen(DB.mo),dg:nDivergAbertas(),at:nDivAtrasadas()})}
@@ -1181,7 +1188,7 @@ function linhaDesp(d,m,o){
   if(o.atr)sub.push('<span class="al">Atrasada · '+SH[m]+'</span>');
   if(vt)sub.push(esc(vt));
   if(o.tipo)sub.push(d.tipo==='fixa'?'Fixa':o.ano?'Var.':'Variável');
-  if(st==='N/A')sub.push('Não se aplica');
+  if(o.enc)sub.push(encTxt(d));else if(st==='N/A')sub.push('Não se aplica');
   if(o.ano)sub.push('ano '+fs(o.ano));
   var fim=o.semFim?'':pend?'<span class="row-end"><button class="chk" data-acao="qp" data-id="'+esc(d.id)+'" data-m="'+m+'" aria-label="Marcar '+esc(d.name)+' como pago">'+ring()+'</button></span>':
     st==='Pago'?'<span class="row-end" title="Pago">'+ring('ok')+'</span>':o.semFim?'':'<span class="row-end">'+(st==='N/A'?'<span class="na">N/A</span>':'')+'</span>';
@@ -1213,6 +1220,7 @@ function pgD(m){
   // painel do mes
   var frase=s>0?'Sobra que passa para '+mProx+'.':s<0?'Faltam <strong>'+fm(-s)+'</strong> para fechar '+mes+'.':'Renda e despesas empatadas em '+mes+'.';
   if(!(t.renda>0))frase+=' <span class="al">Sem renda prevista em '+mes+'.</span>';
+  if(t.rendaExtra>0)frase+=' <span class="hx">Sem as entradas extras ('+fm(t.rendaExtra)+'), '+mes+' fecharia em <strong>'+fm(t.resultadoSemExtras)+'</strong>'+(cr!==0?', sem contar a sobra de '+mAnt:'')+'.</span>';
   else if(t.despesas>t.renda)frase+=' <span class="al">Despesas passam a renda do mês em <strong>'+fm(Fin.r(Fin.c(t.despesas)-Fin.c(t.renda)))+'</strong>'+(cr>0&&s>=0?'; a sobra de '+mAnt+' cobre a diferença.':'.')+'</span>';
   var kc=pct>100?'al':pct>85?'wn':'ok';
   h+='<section class="hero" aria-label="Resumo de '+mes+'"><div class="hero-top"><div><div class="eyb">Saldo de '+mes+'</div><div class="hero-v'+(s<0?' neg':s===0?' zero':'')+'">'+fm(s)+'</div><p class="hero-s">'+frase+'</p></div>';
@@ -1222,7 +1230,7 @@ function pgD(m){
   var base=Math.max(rT,t.despesas,1),wD=Math.max(0,t.despProprias)/base*100,wP=Math.max(0,t.parcelas)/base*100;
   h+='<div class="regua" role="img" aria-label="Despesas '+fm(t.despProprias)+', parcelas '+fm(t.parcelas)+', '+(s>=0?'sobra '+fm(s):'falta '+fm(-s))+'"><i class="rg-d" style="width:'+wD.toFixed(2)+'%"></i><i class="rg-p" style="width:'+wP.toFixed(2)+'%"></i>'+(s<0?'<i class="rg-x" style="position:absolute;right:0;top:0;width:'+(Math.min(100,-s/base*100)).toFixed(2)+'%"></i>':'')+'</div>';
   h+='<div class="regua-l"><span><i class="sw d"></i>Despesas <b>'+fm(t.despProprias)+'</b></span><span><i class="sw p"></i>Parcelas de dívida <b>'+fm(t.parcelas)+'</b></span>'+(s>=0?'<span><i class="sw s"></i>Sobra <b>'+fm(s)+'</b></span>':'<span><i class="sw x"></i>Falta <b>'+fm(-s)+'</b></span>')+'</div>';
-  var hs='<div class="stats"><div><div class="sx-l">Renda de '+mes+'</div><div class="sx-v ok">'+fm(t.renda)+'</div><div class="sx-s">'+(cr>0?'+ '+fm(cr)+' de '+mAnt:cr<0?fm(cr)+' de '+mAnt:'sem sobra anterior')+'</div></div>';
+  var hs='<div class="stats"><div><div class="sx-l">Renda de '+mes+'</div><div class="sx-v ok">'+fm(t.renda)+'</div><div class="sx-s">'+(t.rendaExtra>0?'inclui '+fm(t.rendaExtra)+' de extras · ':'')+(cr>0?'+ '+fm(cr)+' de '+mAnt:cr<0?fm(cr)+' de '+mAnt:'sem sobra anterior')+'</div></div>';
   hs+='<div><div class="sx-l">Despesas</div><div class="sx-v">'+fm(t.despProprias)+'</div><div class="sx-s">'+nf+' fixas · '+nv+' variáveis</div></div>';
   hs+='<div><div class="sx-l">Parcelas de dívida</div><div class="sx-v">'+fm(t.parcelas)+'</div><div class="sx-s">'+plural(pm2.length,'parcela')+' · '+pcd.toFixed(0)+'% da renda</div></div>';
   hs+='<div><div class="sx-l">Reserva acumulada</div><div class="sx-v">'+fm(re)+'</div><div class="sx-s">até '+SH[m]+'/'+esc(DB.curYear)+'</div></div></div>';
@@ -1259,32 +1267,55 @@ function pgP(m){
   h+='<div class="tc"><div class="ts"><table class="t yt"><thead><tr><th class="cn">Conta</th><th>Tipo</th><th>Venc.</th>';
   for(var i=0;i<12;i++)h+='<th class="c '+(i===m?'mhh':'')+'">'+SH[i]+'</th>';
   h+='<th class="r tt">Total</th></tr></thead><tbody>';
-  filtD().forEach(function(d2){var tot=0,ic=gi(d2.name);d2.values.forEach(function(v){tot+=Fin.c(v||0)});h+='<tr><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
-    for(var i=0;i<12;i++){var v=d2.values[i],st=stD(d2,i),cs=celStatus(st,v);h+='<td class="c '+(i===m?'mhi':'')+'"><button class="st '+cs[0]+'" data-acao="'+(st==='Pendente'?'qp':'eU')+'" data-id="'+esc(d2.id)+'" data-m="'+i+'" data-flash="d|'+esc(d2.id)+'|'+i+'"'+(st==='Pendente'?' title="Pendente: toque para marcar como pago"':'')+'>'+cs[1]+'</button></td>'}
-    h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'});
-  if(DB.fD!=='variavel')parcelasDoAno().forEach(function(g){var tot=0,ic=gi(nomeParc(g.name));h+='<tr class="dv-linha"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(nomeParc(g.name))+'</span></div></td><td>'+tagDiv()+'</td><td class="vc">'+esc(vencTxt(g.venc)||'—')+'</td>';
+  function linha(d2){var tot=0,ic=gi(d2.name),et=encTxt(d2);d2.values.forEach(function(v){tot+=Fin.c(v||0)});var r='<tr'+(et?' class="enc"':'')+'><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+(et?'<small class="enc-t">'+esc(et)+'</small>':'')+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
+    for(var i=0;i<12;i++){var v=d2.values[i],st=stD(d2,i),cs=celStatus(st,v);r+='<td class="c '+(i===m?'mhi':'')+'"><button class="st '+cs[0]+'" data-acao="'+(st==='Pendente'?'qp':'eU')+'" data-id="'+esc(d2.id)+'" data-m="'+i+'" data-flash="d|'+esc(d2.id)+'|'+i+'"'+(st==='Pendente'?' title="Pendente: toque para marcar como pago"':'')+'>'+cs[1]+'</button></td>'}
+    return r+'<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'}
+  var casa=[],div=[],fechadas=[];
+  filtD().forEach(function(d2){if(encNoMes(d2,0))fechadas.push(d2);else if(ehDivDesp(d2))div.push(d2);else casa.push(d2)});
+  casa.forEach(function(d2){h+=linha(d2)});
+  var parc=DB.fD!=='variavel'?parcelasDoAno():[];
+  if(div.length||parc.length)h+='<tr class="sep"><td colspan="16">Dívidas e cartões</td></tr>';
+  div.forEach(function(d2){h+=linha(d2)});
+  parc.forEach(function(g){var tot=0,ic=gi(nomeParc(g.name));h+='<tr class="dv-linha"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(nomeParc(g.name))+'</span></div></td><td>'+tagDiv()+'</td><td class="vc">'+esc(vencTxt(g.venc)||'—')+'</td>';
     for(var i=0;i<12;i++){var p=g.meses[i];if(!p){h+='<td class="c '+(i===m?'mhi':'')+'"><span class="cv ze">—</span></td>';continue}tot+=Fin.c(p.valor||0);var cs=celStatus(p.status,p.valor);h+='<td class="c '+(i===m?'mhi':'')+'">'+btnParcela(p,Fin.ym(DB.curYear,i),cs[0],cs[1])+'</td>'}
     h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'});
+  if(fechadas.length){h+='<tr class="sep"><td colspan="16"><button class="lk" onclick="UI.verEnc=!UI.verEnc;R()">'+(UI.verEnc?'Esconder':'Mostrar')+' '+plural(fechadas.length,'conta encerrada','contas encerradas')+'</button></td></tr>';
+    if(UI.verEnc)fechadas.forEach(function(d2){h+=linha(d2)})}
   h+='</tbody></table></div></div></div>';return h}
 // Celular: o mes em lista (a grade de 12 meses nao cabe em 390 px)
 function pgPMes(m){
-  var y=Y(),t=T(m),ym=Fin.ym(DB.curYear,m),mes=MN[m].toLowerCase(),pend=[],resto=[],sem=[],pagasP=[],pago=0,falta=0;
+  var y=Y(),t=T(m),ym=Fin.ym(DB.curYear,m),mes=MN[m].toLowerCase(),pend=[],resto=[],sem=[],enc=[],dAbe=[],dPag=[],pago=0,falta=0,totDiv=0;
   filtD().forEach(function(d){var st=stD(d,m),v=d.values[m]||0;
+    if(encNoMes(d,m)){enc.push(d);return}
+    if(ehDivDesp(d)){
+      if(!(v>0)||st==='N/A'){sem.push(d);return}
+      totDiv+=Fin.c(v);
+      if(st==='Pago'){dPag.push({h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)});pago+=Fin.c(v)}
+      else{dAbe.push({h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)});if(st==='Pendente')falta+=Fin.c(v)}
+      return}
     if(st==='Pendente'){pend.push({h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)});falta+=Fin.c(v)}
     else if(v>0&&st!=='N/A'){resto.push({h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)});if(st==='Pago')pago+=Fin.c(v)}
     else sem.push(d)});
-  if(DB.fD!=='variavel')PM(m).forEach(function(p){if(p.status==='Pago'){pagasP.push(p);pago+=Fin.c(p.pago||p.valor)}else{pend.push({h:linhaParc(p,ym),dia:diaVenc(p.venc)});falta+=Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0));pago+=Fin.c(p.pago||0)}});
-  var ord=function(a,b){return a.dia-b.dia};pend.sort(ord);resto.sort(ord);
+  if(DB.fD!=='variavel')PM(m).forEach(function(p){totDiv+=Fin.c(p.valor||0);if(p.status==='Pago'){dPag.push({h:linhaParc(p,ym),dia:diaVenc(p.venc)});pago+=Fin.c(p.pago||p.valor)}else{dAbe.push({h:linhaParc(p,ym),dia:diaVenc(p.venc)});falta+=Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0));pago+=Fin.c(p.pago||0)}});
+  var ord=function(a,b){return a.dia-b.dia};pend.sort(ord);resto.sort(ord);dAbe.sort(ord);dPag.sort(ord);
   var h='<div class="pg on"><div class="ph"><div class="pt">Contas de '+mes+'<small>Planejamento '+esc(DB.curYear)+'</small></div><button class="ab" onclick="addD()">'+svg('plus')+'Nova</button></div>';
-  h+='<div class="stats c3"><div><div class="sx-l">Falta pagar</div><div class="sx-v'+(falta>0?' al':' ok')+'">'+fm(Fin.r(falta))+'</div></div><div><div class="sx-l">Pago</div><div class="sx-v">'+fm(Fin.r(pago))+'</div></div><div><div class="sx-l">Previsto no mês</div><div class="sx-v">'+fm(t.despesas)+'</div><div class="sx-s">despesas + parcelas</div></div></div>';
+  h+='<div class="stats c3"><div><div class="sx-l">Falta pagar</div><div class="sx-v'+(falta>0?' al':' ok')+'">'+fm(Fin.r(falta))+'</div></div><div><div class="sx-l">Pago</div><div class="sx-v">'+fm(Fin.r(pago))+'</div></div><div><div class="sx-l">Previsto no mês</div><div class="sx-v">'+fm(t.despesas)+'</div><div class="sx-s">casa + dívidas</div></div></div>';
   h+='<div style="margin-bottom:14px">'+filtroD()+'</div>';
-  h+='<section class="card">';
-  if(pend.length)h+='<div class="card-h"><h2>Para pagar <span class="tcb br2">'+pend.length+'</span></h2></div><ul class="lst">'+pend.map(function(x){return x.h}).join('')+'</ul>';
-  if(resto.length)h+='<div class="card-h"'+(pend.length?' style="border-top:1px solid var(--bl)"':'')+'><h2>Demais contas</h2><span class="card-m">'+plural(resto.length,'conta')+'</span></div><ul class="lst">'+resto.map(function(x){return x.h}).join('')+'</ul>';
-  if(!pend.length&&!resto.length)h+='<div class="vazio">'+svg('ok')+'<b>Nada para pagar em '+mes+'</b>Nenhuma conta com valor neste mês.</div>';
-  if(pagasP.length)h+=grp('p-pagas','Parcelas pagas',plural(pagasP.length,'parcela'),function(){return '<ul class="lst">'+pagasP.map(function(p){return linhaParc(p,ym)}).join('')+'</ul>'});
+  h+='<section class="card"><div class="card-h"><h2>Contas da casa</h2><span class="card-m">'+fm(Fin.r(Fin.c(t.despesas)-totDiv))+'</span></div>';
+  if(pend.length)h+='<div class="card-h" style="border-top:1px solid var(--bl)"><h2>Para pagar <span class="tcb br2">'+pend.length+'</span></h2></div><ul class="lst">'+pend.map(function(x){return x.h}).join('')+'</ul>';
+  if(resto.length)h+='<div class="card-h" style="border-top:1px solid var(--bl)"><h2>Demais contas</h2><span class="card-m">'+plural(resto.length,'conta')+'</span></div><ul class="lst">'+resto.map(function(x){return x.h}).join('')+'</ul>';
+  if(!pend.length&&!resto.length)h+='<div class="vazio">'+svg('ok')+'<b>Nada para pagar em '+mes+'</b>Nenhuma conta da casa com valor neste mês.</div>';
   if(sem.length)h+=grp('p-sem','Sem valor em '+mes,plural(sem.length,'conta'),function(){return '<ul class="lst">'+sem.map(function(d){return linhaDesp(d,m,{tipo:1})}).join('')+'</ul>'});
-  h+='</section></div>';
+  if(enc.length)h+=grp('p-enc','Encerradas',plural(enc.length,'conta'),function(){return '<ul class="lst">'+enc.map(function(d){return linhaDesp(d,m,{enc:1})}).join('')+'</ul>'});
+  h+='</section>';
+  if(dAbe.length||dPag.length){
+    h+='<section class="card"><div class="card-h"><h2>Dívidas e cartões'+(dAbe.length?' <span class="tcb br2">'+dAbe.length+'</span>':'')+'</h2><span class="card-m">'+fm(Fin.r(totDiv))+' no mês</span></div>';
+    if(dAbe.length)h+='<ul class="lst">'+dAbe.map(function(x){return x.h}).join('')+'</ul>';
+    else h+='<div class="vazio" style="padding:18px">'+svg('ok')+'<b>Tudo pago</b></div>';
+    if(dPag.length)h+=grp('p-div-pagas','Pagas em '+mes,plural(dPag.length,'item','itens'),function(){return '<ul class="lst">'+dPag.map(function(x){return x.h}).join('')+'</ul>'});
+    h+='<p class="fd-h" style="margin:0;padding:10px 18px 14px">O plano de cada dívida fica na página Dívidas.</p></section>';
+  }
+  h+='</div>';
   return h;
 }
 
@@ -1298,9 +1329,14 @@ function vTB(type,m,title){
   h+='<div class="tc"><div class="ts"><table class="t yt"><thead><tr><th class="cn">Categoria</th>'+(hasTipo?'<th>Tipo</th>':'');
   for(var i=0;i<12;i++)h+='<th class="r '+(i===m?'mhh':'')+'">'+SH[i]+'</th>';
   h+='<th class="r tt">Total</th><th class="r tt">Média</th></tr></thead><tbody>';
-  filt.forEach(function(it){var tot=0,avg=avgNZ(it.values),ic=gi(it.name);it.values.forEach(function(v){tot+=Fin.c(v||0)});
+  var nFech=0;
+  if(type==='despesas'){filt=filt.filter(function(it){if(encNoMes(it,0)){nFech++;return !!UI.verEnc}return true})}
+  if(type==='renda'){var rg=filt.filter(function(it){return !ehExtra(it)}),ex=filt.filter(ehExtra);filt=rg.concat(ex)}
+  var sepX=false;
+  filt.forEach(function(it){
+    if(type==='renda'&&!sepX&&ehExtra(it)){sepX=true;h+='<tr class="sep"><td colspan="16">Entradas extras</td></tr>'}var tot=0,avg=avgNZ(it.values),ic=gi(it.name);it.values.forEach(function(v){tot+=Fin.c(v||0)});
     h+='<tr><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span class="rn" data-acao="ren" data-tipo="'+type+'" data-id="'+esc(it.id)+'" title="Renomear">'+esc(it.name)+'</span></div></td>';
-    if(hasTipo)h+='<td><span class="tp '+(it.tipo==='fixa'?'tp-f':'tp-v')+'">'+(it.tipo==='fixa'?'Fixa':'Var.')+'</span></td>';
+    if(hasTipo)h+='<td>'+(type==='renda'&&ehExtra(it)?'<span class="tp tp-x">Extra</span>':'<span class="tp '+(it.tipo==='fixa'?'tp-f':'tp-v')+'">'+(it.tipo==='fixa'?'Fixa':'Var.')+'</span>')+'</td>';
     for(var i=0;i<12;i++){var v=it.values[i],cl=v>0?(type==='renda'?'po':'ne'):'ze',ac=type==='despesas'?'data-acao="eU" data-id="'+esc(it.id)+'" data-m="'+i+'"':'data-acao="eVR" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+i+'"';
       h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv '+cl+'" '+ac+' data-flash="d|'+esc(it.id)+'|'+i+'" role="button" tabindex="0">'+(v>0?fm(v):'—')+'</span></td>'}
     h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td><td class="r tt"><span class="cv ze b">'+fm(avg)+'</span></td></tr>'});
@@ -1311,6 +1347,7 @@ function vTB(type,m,title){
   if(type==='renda'){h+='<tr class="auto"><td class="cn"><div class="nm"><span class="ic">'+svg('undo')+'</span><span>Sobra do mês anterior</span></div></td><td><span class="tp tp-f">Auto</span></td>';
     var tc2=0;for(var i=0;i<12;i++){var c=carry(i);tc2+=Fin.c(c);h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv b" style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+(c!==0?fm(c):'—')+'</span></td>'}
     h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tc2))+'</span></td><td class="r tt"><span class="cv ze b">'+fm(Fin.r(Math.round(tc2/12)))+'</span></td></tr>'}
+  if(nFech)h+='<tr class="sep"><td colspan="16"><button class="lk" onclick="UI.verEnc=!UI.verEnc;R()">'+(UI.verEnc?'Esconder':'Mostrar')+' '+plural(nFech,'conta encerrada','contas encerradas')+'</button></td></tr>';
   h+='</tbody></table></div></div>';
   if(type==='despesas'&&DB.fD!=='variavel'&&parcelasDoAno().length)h+='<p class="fd-h" style="margin:-8px 0 16px">Linhas marcadas como <strong>Dívida</strong> vêm do plano de cada dívida: o valor muda na página Dívidas.</p>';
   if(type==='reserva')h+='<div class="ins gd"><span class="em">'+svg('ok')+'</span>Reserva acumulada até '+MN[m]+': <strong>'+fm(accRe(m))+'</strong></div>';
@@ -1321,15 +1358,22 @@ function vTBMes(type,m,title,filt,hasTipo,fKey,novo){
   var h='<div class="pg on"><div class="ph"><div class="pt">'+title+'<small>'+MN[m]+' '+esc(DB.curYear)+'</small></div><button class="ab" onclick="addI(\''+type+'\')">'+svg('plus')+'Nova</button></div>';
   if(hasTipo)h+='<div style="margin-bottom:14px">'+filtroTipo(type,fKey,Y()[type])+'</div>';
   h+='<section class="card"><ul class="lst">';
-  var com=filt.filter(function(it){return (it.values[m]||0)>0}),sem=filt.filter(function(it){return !((it.values[m]||0)>0)});
-  com.sort(function(a,b){return (b.values[m]||0)-(a.values[m]||0)});
-  com.forEach(function(it){tot+=Fin.c(it.values[m]||0);var ano=0;it.values.forEach(function(v){ano+=Fin.c(v||0)});h+=linhaDesp(it,m,{tipo:hasTipo&&DB[fKey]==='all',ano:Fin.r(ano),semFim:1,acao:ac,tipoItem:type,po:type==='renda'})});
+  var enc=type==='despesas'?filt.filter(function(it){return encNoMes(it,m)}):[];
+  if(enc.length)filt=filt.filter(function(it){return !encNoMes(it,m)});
+  var divD=type==='despesas'?filt.filter(function(it){return ehDivDesp(it)&&(it.values[m]||0)>0}):[];
+  var extras=type==='renda'?filt.filter(function(it){return ehExtra(it)&&(it.values[m]||0)>0}):[];
+  var com=filt.filter(function(it){return (it.values[m]||0)>0&&divD.indexOf(it)<0&&extras.indexOf(it)<0}),sem=filt.filter(function(it){return !((it.values[m]||0)>0)});
+  var ordV=function(a,b){return (b.values[m]||0)-(a.values[m]||0)};com.sort(ordV);extras.sort(ordV);
+  var lin=function(it){tot+=Fin.c(it.values[m]||0);var ano=0;it.values.forEach(function(v){ano+=Fin.c(v||0)});return linhaDesp(it,m,{tipo:hasTipo&&DB[fKey]==='all',ano:Fin.r(ano),semFim:1,acao:ac,tipoItem:type,po:type==='renda'})};
+  com.forEach(function(it){h+=lin(it)});
   if(!com.length)h+='<li class="vazio">Nada em '+mes+'.</li>';
   h+='</ul>';
-  if(type==='despesas'&&DB.fD!=='variavel'){var pm2=PM(m),tp=0;pm2.forEach(function(p){tp+=Fin.c(p.valor||0)});
-    if(pm2.length)h+=grp('de-parc','Parcelas de dívida',fm(Fin.r(tp)),function(){var ym=Fin.ym(DB.curYear,m);return '<ul class="lst">'+pm2.map(function(p){return linhaParc(p,ym,{semFim:1})}).join('')+'</ul>'});
+  if(extras.length){var tx=0;extras.forEach(function(it){tx+=Fin.c(it.values[m]||0)});h+='<div class="card-h" style="border-top:1px solid var(--bl)"><h2>Entradas extras</h2><span class="card-m">'+fm(Fin.r(tx))+'</span></div><ul class="lst">'+extras.map(lin).join('')+'</ul>'}
+  if(type==='despesas'&&DB.fD!=='variavel'){var pm2=PM(m),tp=0;pm2.forEach(function(p){tp+=Fin.c(p.valor||0)});divD.forEach(function(it){tp+=Fin.c(it.values[m]||0)});
+    if(pm2.length||divD.length)h+=grp('de-parc','Dívidas e cartões',fm(Fin.r(tp)),function(){var ym=Fin.ym(DB.curYear,m);return '<ul class="lst">'+divD.map(function(it){return linhaDesp(it,m,{semFim:1,acao:ac,tipoItem:type})}).join('')+pm2.map(function(p){return linhaParc(p,ym,{semFim:1})}).join('')+'</ul>'});
     tot+=tp}
   if(sem.length)h+=grp('de-sem-'+type,'Sem valor em '+mes,plural(sem.length,'item','itens'),function(){return '<ul class="lst">'+sem.map(function(it){return linhaDesp(it,m,{tipo:hasTipo,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
+  if(enc.length)h+=grp('de-enc','Encerradas',plural(enc.length,'conta'),function(){return '<ul class="lst">'+enc.map(function(it){return linhaDesp(it,m,{enc:1,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
   if(type==='renda'){var c=carry(m);h+='<div class="lst-f"><span>Sobra do mês anterior</span><b style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+fm(c)+'</b></div>'}
   h+='<div class="lst-f"><span>Total de '+mes+'</span><b>'+fm(Fin.r(tot))+'</b></div>';
   if(type==='reserva')h+='<div class="lst-f"><span>Acumulada até '+SH[m]+'</span><b>'+fm(accRe(m))+'</b></div>';
@@ -1983,7 +2027,7 @@ function delDivida(id){
 // ===== DIVERGÊNCIAS (achadas na migração/validação) =====
 var DG_TIPO={'so-planilha':'Só na planilha','orfa':'Órfã','cadastro':'Cadastro'},DG_ORIG={'planilha':'planilha','app-antigo':'app antigo'};
 function pgDivg(){
-  var l=DB.divergencias.slice().sort(function(a,b){return (a.status==='resolvida'?1:0)-(b.status==='resolvida'?1:0)}),ab=nDivergAbertas();
+  var l=DB.divergencias.filter(Fin.ehDivergencia).sort(function(a,b){return (a.status==='resolvida'?1:0)-(b.status==='resolvida'?1:0)}),ab=nDivergAbertas();
   var h='<div class="pg on"><div class="pt">Divergências<small>Diferenças achadas entre a planilha e o app antigo. Decida e marque como resolvida.</small></div>';
   if(!l.length)return h+'<section class="card"><div class="vazio">'+svg('ok')+'<b>Nada registrado</b>Nenhuma divergência entre as bases.</div></section></div>';
   h+='<div class="ins'+(ab?' yw':' gd')+'"><span class="em">'+svg(ab?'alert':'ok')+'</span>'+(ab?'<strong>'+ab+'</strong> divergência(s) aberta(s) para decidir.':'Nenhuma divergência aberta.')+'</div>';
@@ -2112,13 +2156,26 @@ function eU(id,mo){var d=achar('despesas',id);if(!d)return;EDIT={tipo:'despesas'
   campoValor(d.values[mo],'sU')+
   '<div class="fd"><label>Status</label><div class="tgl" role="group" aria-label="Status">'+seg('Pago','Pago')+seg('Pendente','Pendente')+seg('N/A','N/A','Não se aplica')+seg('','Sem status')+'</div><input type="hidden" id="mS" value="'+esc(st)+'">'+(auto?'<div class="fd-h">Sem status, a conta fixa vencida aparece como pendente.</div>':'')+'</div>'+
   '<div class="fd"><label>Tipo</label>'+tglHtml('mT',d.tipo)+'</div>'+
+  '<div class="fd"><label>Grupo</label>'+tglGrupo('mG',ehDivDesp(d)?'div':'casa',[['casa','Conta da casa'],['div','Dívida ou cartão']])+'</div>'+
+  '<div class="fd"><button type="button" class="lk" onclick="encD()">'+svg('stop')+(Fin.mesEncerramento(d)>=0&&Fin.mesEncerramento(d)<=mo?'Reabrir esta conta':'Encerrar esta conta (não pago mais)')+'</button></div>'+
   '<div class="mac"><button class="btn btn-g" onclick="delI()">'+svg('trash')+'Excluir</button><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="sU()">Salvar</button></div>');
   focarValor()}
+function tglGrupo(id,val,ops){return '<div class="tgl">'+ops.map(function(o){return '<button type="button" class="tgl-o'+(val===o[0]?' on':'')+'" aria-pressed="'+(val===o[0])+'" onclick="tglC(this,\''+o[0]+'\',\''+id+'\')">'+o[1]+'</button>'}).join('')+'</div><input type="hidden" id="'+id+'" value="'+val+'">'}
+// Encerrar conta que acabou (gás, faculdade...): some do mês escolhido em diante e dos anos seguintes
+function encD(){var c=EDIT,d=c&&achar('despesas',c.id);if(!d)return;var mE=Fin.mesEncerramento(d),ano=Number(DB.curYear);
+  if(mE>=0&&mE<=c.m){confirmar('Reabrir conta?','<strong>'+esc(d.name)+'</strong> volta a aparecer de '+MN[mE].toLowerCase()+' em diante, com os valores zerados para você preencher.','Reabrir',function(){Fin.reabrirDespesa(DB,DB.curYear,d.id,mE);toast('Conta reaberta · '+d.name);R()});return}
+  var ini=d.status[c.m]==='Pago'?c.m+1:c.m,ops='';
+  for(var k=c.m;k<12;k++)ops+='<option value="'+k+'"'+(k===ini?' selected':'')+'>'+MN[k]+' de '+ano+'</option>';
+  ops+='<option value="12"'+(ini===12?' selected':'')+'>Janeiro de '+(ano+1)+'</option>';
+  om('<h3>Encerrar '+esc(d.name)+'</h3><p class="ms">A conta sai do planejamento a partir do mês escolhido e dos anos seguintes. Os meses anteriores ficam como estão. Dá para reabrir depois.</p><div class="fd"><label for="mE">Não pago mais a partir de</label><select id="mE" class="inp">'+ops+'</select></div><div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="sEncD()">Encerrar</button></div>');
+}
+function sEncD(){var c=EDIT,d=c&&achar('despesas',c.id);if(!d){cmo();return}var k=Number(document.getElementById('mE').value);
+  Fin.encerrarDespesa(DB,DB.curYear,d.id,k);cmo();toast('Conta encerrada · '+d.name+' (a partir de '+(k<12?MN[k].toLowerCase():'janeiro')+')');R()}
 function sU(){var c=EDIT,d=c&&achar('despesas',c.id);if(!d){cmo();return}
   var v=lerValor(document.getElementById('mV').value);
   if(v===null){erroCampo('mV','Valor inválido. Use números, com vírgula para centavos (ex.: 150,90). Para zerar, digite 0.');return}
-  var st=document.getElementById('mS').value,tp=document.getElementById('mT').value;
-  aplicarValor(d,c.m,v,function(){d.tipo=tp;d.status[c.m]=st},'Salvo');
+  var st=document.getElementById('mS').value,tp=document.getElementById('mT').value,gEl=document.getElementById('mG');
+  aplicarValor(d,c.m,v,function(){d.tipo=tp;d.status[c.m]=st;if(gEl&&(gEl.value==='div')!==ehDivDesp(d))Fin.marcar(DB,'despDivida',d.name,gEl.value==='div')},'Salvo');
 }
 // Valor de fixa: pergunta se aplica aos meses seguintes (antes copiava sem perguntar e apagava reajuste)
 function aplicarValor(it,m,v,antes,msg){
@@ -2137,13 +2194,14 @@ function aplicarValor(it,m,v,antes,msg){
 function eVR(type,id,mo){var it=achar(type,id);if(!it)return;EDIT={tipo:type,id:it.id,m:mo};var hasTipo=type!=='reserva';
   var html='<h3>'+esc(it.name)+'</h3><p class="ms">'+MN[mo]+' '+esc(DB.curYear)+' · <button class="lk" style="padding:0 2px;font-size:13px" data-acao="ren" data-tipo="'+type+'" data-id="'+esc(it.id)+'">Renomear</button></p>'+campoValor(it.values[mo],'sVR');
   if(hasTipo)html+='<div class="fd"><label>Tipo</label>'+tglHtml('mT',it.tipo)+'</div>';
+  if(type==='renda')html+='<div class="fd"><label>Grupo</label>'+tglGrupo('mX',ehExtra(it)?'x':'r',[['r','Renda do mês'],['x','Entrada extra']])+'<div class="fd-h">Entrada extra: 13º, venda, empréstimo, restituição. O início mostra o mês com e sem elas.</div></div>';
   html+='<div class="mac"><button class="btn btn-g" onclick="delI()">'+svg('trash')+'Excluir</button><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="sVR()">Salvar</button></div>';
   om(html);focarValor()}
 function sVR(){var c=EDIT,it=c&&achar(c.tipo,c.id);if(!it){cmo();return}
   var v=lerValor(document.getElementById('mV').value);
   if(v===null){erroCampo('mV','Valor inválido. Use números, com vírgula para centavos (ex.: 150,90). Para zerar, digite 0.');return}
-  var tEl=document.getElementById('mT'),tp=tEl?tEl.value:it.tipo;
-  aplicarValor(it,c.m,v,function(){if(tEl)it.tipo=tp},'Salvo');
+  var tEl=document.getElementById('mT'),tp=tEl?tEl.value:it.tipo,xEl=document.getElementById('mX');
+  aplicarValor(it,c.m,v,function(){if(tEl)it.tipo=tp;if(xEl&&(xEl.value==='x')!==ehExtra(it))Fin.marcar(DB,'rendaExtra',it.name,xEl.value==='x')},'Salvo');
 }
 function delI(){var c=EDIT,it=c&&achar(c.tipo,c.id);if(!it){cmo();return}
   confirmar('Excluir item?','<strong>'+esc(it.name)+'</strong> sai de '+esc(DB.curYear)+' (todos os meses).','Excluir',function(){Y()[c.tipo]=Y()[c.tipo].filter(function(x){return x.id!==it.id});toast('Excluído · '+it.name);R()},true);
@@ -2246,6 +2304,7 @@ function saveRename(){
   var it=EDIT&&achar(EDIT.tipo,EDIT.id);if(!it){cmo();return}
   var newName=document.getElementById('rnName').value.trim();
   if(!newName){erroCampo('rnName','Nome vazio.');return}
+  var cf=Fin.config(DB);['rendaExtra','despDivida'].forEach(function(k){if(Fin.temNome(cf[k],it.name)){Fin.marcar(DB,k,it.name,false);Fin.marcar(DB,k,newName,true)}});
   it.name=newName;
   cmo();toast('Renomeado!');R();
 }
@@ -2389,10 +2448,11 @@ function salvarLanc(){
   if(p.length!==3){erroCampo('lcD','Data inválida.');return}
   var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,
     tipo:LC.tipo,categoria:LC.cat,valor:v,obs:(document.getElementById('lcO').value||'').trim(),origem:'app'};
+  var noPlano=lancNoPlano(l,1);
   if(!DB.filaLanc)DB.filaLanc=[];
   DB.filaLanc.push(l);
   salvarLocal();cmo();
-  toast((LC.tipo==='renda'?'Entrada lançada: ':'Gasto lançado: ')+LC.cat+' · '+fm(v),function(){desfazerLanc(l.id)});
+  toast((LC.tipo==='renda'?'Entrada lançada: ':'Gasto lançado: ')+LC.cat+' · '+fm(v)+(noPlano?' · somado ao planejamento':''),function(){desfazerLanc(l.id)});
   R();
   enviarFilaLanc();
 }
@@ -2446,8 +2506,23 @@ function delLanc(id){
   '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-d" id="lcDelOk">Excluir</button></div>');
   document.getElementById('lcDelOk').onclick=function(){confDelLanc(id)};
 }
+// Lancamento sem previsto no mes entra tambem no planejamento (antes so ia para o Controle e o Inicio nao mudava).
+// Regra: o planejamento so e mexido quando o valor previsto e exatamente a soma dos lancamentos daquela categoria no mes.
+function lancNoPlano(l,sinal){
+  var y=DB.years[String(l.ano)];if(!y)return false;
+  var renda=String(l.tipo||'despesa')==='renda',lista=renda?y.renda:y.despesas,m=Number(l.mes),n=Fin.normNome(l.categoria),it=null,i;
+  for(i=0;i<lista.length;i++)if(Fin.normNome(lista[i].name)===n){it=lista[i];break}
+  var outros=0;lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
+  var plano=it?Fin.c(it.values[m]||0):0,vc=Fin.c(l.valor);
+  if(sinal>0){
+    if(plano!==outros)return false;
+    if(!it){it=renda?{id:novoId('r'),name:l.categoria,tipo:'variavel',values:z12()}:{id:novoId('d'),name:l.categoria,venc:'',tipo:'variavel',values:z12(),status:s12()};lista.push(it)}
+    it.values[m]=Fin.r(plano+vc);if(!renda)it.status[m]='Pago';return true}
+  if(!it||plano!==outros+vc)return false;
+  it.values[m]=Fin.r(outros);if(!renda&&outros===0&&it.status[m]==='Pago')it.status[m]='';return true}
 function confDelLanc(id){
-  var estavaNaFila=naFila(id);
+  var estavaNaFila=naFila(id),lx=null;lancTodos().forEach(function(x){if(String(x.id)===String(id))lx=x});
+  if(lx)lancNoPlano(lx,-1);
   DB.lancamentos=(DB.lancamentos||[]).filter(function(x){return String(x.id)!==String(id)});
   DB.filaLanc=(DB.filaLanc||[]).filter(function(x){return String(x.id)!==String(id)});
   salvarLocal();cmo();toast('Lançamento excluído');R();
