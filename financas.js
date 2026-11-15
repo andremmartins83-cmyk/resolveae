@@ -802,19 +802,20 @@
   // ordem importa: o primeiro grupo com a palavra inteira (ou no plural com 's') ganha
   var PALAVRAS_CAT = [
     ['impostos', ['das', 'iptu', 'ipva', 'imposto']],
-    ['financeiro', ['emprestimo', 'consorcio', 'financiamento', 'limite', 'banco']],
+    ['financeiro', ['emprestimo', 'consorcio', 'financiamento', 'limite', 'banco', 'parcelas']],
     ['casa', ['aluguel', 'condominio', 'garagem', 'limpeza', 'moradia']],
     ['contas', ['luz', 'agua', 'gas', 'energia']],
-    ['telefone', ['vivo', 'claro', 'tim', 'internet']],
+    ['telefone', ['vivo', 'claro', 'tim', 'internet', 'celular']],
     ['mercado', ['mercado', 'supermercado', 'padaria']],
     ['alimentacao', ['restaurante', 'ifood', 'delivery']],
-    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento']],
-    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'gympass', 'academia']],
-    ['educacao', ['faculdade', 'curso', 'livro', 'kindle', 'escola']],
+    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento', 'oleo', 'pneu']],
+    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'gympass', 'academia', 'lente', 'oculos', 'medico', 'exame', 'monjaro']],
+    ['educacao', ['faculdade', 'curso', 'livro', 'kindle', 'escola', 'biblia', 'uninove']],
     ['lazer', ['netflix', 'spotify', 'spotfy', 'claude', 'icloud', 'amazon']],
-    ['roupas', ['renner', 'c&a', 'h&m', 'roupa', 'tenis', 'barbearia', 'barbeiro', 'maquiagem', 'perfume']],
-    ['presentes', ['presente']],
-    ['viagem', ['viagem', 'airbnb', 'passeio']],
+    ['roupas', ['renner', 'c&a', 'h&m', 'roupa', 'tenis', 'barbearia', 'barbeiro', 'maquiagem', 'perfume', 'riachuelo', 'zara', 'bershka', 'vestido', 'salto', 'terno', 'blusa', 'camiseta', 'calca', 'jaqueta', 'chinelo', 'vivara', 'pulseira', 'relogio', 'depilacao', 'calcinha', 'biquini']],
+    ['presentes', ['presente', 'natal', 'amigo secreto']],
+    ['viagem', ['viagem', 'airbnb', 'passeio', 'lua de mel', 'monte verde', 'campos do jordao', 'cataratas', 'duty free', 'aeroporto', 'hotel', 'praia']],
+    ['itens-casa', ['geladeira', 'microondas', 'maquina', 'cooktop', 'tv', 'projetor', 'tinta', 'notbook', 'notebook', 'movel', 'moveis', 'lixa', 'pintura', 'aspirador', 'batedeira', 'varal', 'mesa', 'cabeceira', 'cabiceira', 'casa']],
     ['pets', ['pet', 'racao', 'veterinario']],
     ['renda', ['salario', 'comissao', '13º', '13°', 'ferias', 'plr', 'vale']]
   ];
@@ -1063,7 +1064,8 @@
     var novo = {
       despesas: (src.despesas || []).filter(function (d) { return !Fin.encerradaDesde(d, 11); }).map(function (d) {
         return { id: Fin.novoId('d'), name: d.name, venc: d.venc || '', tipo: d.tipo === 'fixa' ? 'fixa' : 'variavel',
-          values: d.tipo === 'fixa' ? doze(d) : z12(), status: s12() };
+          // fixa e assinatura nascem com o valor de dezembro em todos os meses
+          values: (d.tipo === 'fixa' || Fin.classeDespesa(DB, d) === 'assinatura') ? doze(d) : z12(), status: s12() };
       }),
       renda: (src.renda || []).map(function (x) {
         return { id: Fin.novoId('r'), name: x.name, tipo: x.tipo === 'fixa' ? 'fixa' : 'variavel',

@@ -271,7 +271,7 @@ table.t td.tt,table.t th.tt{background:var(--ap2);font-weight:700}
 .fpill.on{background:var(--b6);color:#fff;border-color:var(--b6)}
 .cart.on{border-color:var(--b6);box-shadow:inset 0 0 0 1px var(--b6);background:var(--ap);font-weight:600}
 .st-fu{border:1px dashed var(--bd);color:var(--t2)}
-.ic-c{position:relative;display:inline-flex;align-items:center;justify-content:center}.ic-b{position:absolute;right:-9px;bottom:-9px;border-radius:5px;box-shadow:0 0 0 2px var(--wh)}.ic-b .selo{display:block}
+.lin-ed{cursor:pointer}.lin-ed:hover td{background:var(--ap)}.ic-c{position:relative;display:inline-flex;align-items:center;justify-content:center}.ic-cart .selo{display:block;width:100%;height:100%}.ic:has(.ic-cart){background:none;overflow:visible}.ic-cart{width:100%;height:100%}.ic-e{position:absolute;right:-6px;bottom:-6px;width:18px;height:18px;border-radius:50%;background:var(--wh);box-shadow:0 0 0 1px var(--bl);display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}.ic-b{position:absolute;right:-9px;bottom:-9px;border-radius:5px;box-shadow:0 0 0 2px var(--wh)}.ic-b .selo{display:block}
 .fp-rol{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;max-width:100%}.fp-rol::-webkit-scrollbar{display:none}.fp-rol .fpill{flex:0 0 auto}
 .ed-acoes{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:4px 0 8px}
 .pc-blk{border:1px solid var(--bl);border-radius:var(--rs);padding:12px 14px;margin:0 0 16px;background:var(--ap)}.pc-t{font-weight:600;font-size:14px}.pc-l{display:flex;flex-wrap:wrap;gap:14px;font-size:13.5px;margin-top:6px}.pc-l .ok{color:var(--b6)}.pc-l .al{color:var(--r6)}.pc-a{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pc-a .btn{margin:0;flex:1 1 auto}
@@ -680,7 +680,9 @@ function selCatRef(id,ref){var atual=dimDe(ref).categoria,h='<select id="'+id+'"
 // ícone pelo nome: usa a categoria gravada no modelo para aquele nome; sem nada gravado, o palpite do modelo
 function iconeNome(n){var m=cfgRaw().meta||{},k=Fin.normNome(n),x=m['d:'+k]||m['r:'+k];if(x&&x.categoria)return catIcone(x.categoria);var ic=(cfgRaw().icones||{})[k];return catIcone(ic||Fin.categoriaPorNome(n))}
 function gi(n){if(typeof DB==='undefined'||!DB||!DB.years){for(var k in IK)if(String(n).indexOf(k)>=0)return IK[k];return['📄','i-ot']}return [iconeNome(n),'i-ot']}
-function giDiv(dv){var d=dimDe(refV(dv)),c=d.cartao?cartaoPorChave(d.cartao):null;return '<span class="ic-c">'+catIcone(d.categoria)+(c?'<span class="ic-b">'+selo(c,16)+'</span>':'')+'</span>'}
+function icoItem(cat,ck){var c=ck?cartaoPorChave(ck):null;if(c)return '<span class="ic-c ic-cart">'+selo(c,34)+'<span class="ic-e">'+catIcone(cat)+'</span></span>';return '<span class="ic-c">'+catIcone(cat)+'</span>'}
+function giDiv(dv){var d=dimDe(refV(dv));return icoItem(d.categoria,d.cartao)}
+function giD(d){var x=dimDe(refD(d));return icoItem(x.categoria,x.cartao)}
 function fm(v){return'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function fs(v){var a=Math.abs(v||0),s=v<0?'- ':'';return a>=1000?s+'R$ '+(a/1000).toFixed(1).replace('.',',')+' k':s+'R$ '+a.toFixed(0)}
 function z12(){return[0,0,0,0,0,0,0,0,0,0,0,0]}
@@ -1259,7 +1261,7 @@ function plural(n,s,p){return n+' '+(n===1?s:(p||s+'s'))}
 
 // Linha de conta (despesa) para listas: toque na linha edita, toque no circulo marca como pago
 function linhaDesp(d,m,o){
-  o=o||{};var st=stD(d,m),v=d.values[m]||0,dD=dimDe(refD(d)),cdd=dD.cartao?cartaoPorChave(dD.cartao):null,ic=['<span class="ic-c">'+catIcone(dD.categoria)+(cdd?'<span class="ic-b">'+selo(cdd,16)+'</span>':'')+'</span>'],pend=st==='Pendente',sub=[],vt=vencTxt(d.venc);
+  o=o||{};var st=stD(d,m),v=d.values[m]||0,ic=[giD(d)],pend=st==='Pendente',sub=[],vt=vencTxt(d.venc);
   if(o.atr)sub.push('<span class="al">Atrasada · '+SH[m]+'</span>');
   else if(st==='Pendente'&&Fin.ym(DB.curYear,m)===hojeYM()){var dv0=diaVenc(d.venc),hj=new Date().getDate();if(dv0<99&&dv0<hj)sub.push('<span class="al">Atrasada há '+plural(hj-dv0,'dia')+'</span>')}
   if(vt)sub.push(esc(vt));
@@ -1344,13 +1346,13 @@ function pgP(m){
   h+='<div class="tc"><div class="ts"><table class="t yt"><thead><tr><th class="cn">Conta</th><th>Tipo</th><th>Venc.</th>';
   for(var i=0;i<12;i++)h+='<th class="c '+(i===m?'mhh':'')+'">'+SH[i]+'</th>';
   h+='<th class="r tt">Total</th></tr></thead><tbody>';
-  function linha(d2){var tot=0,ic=gi(d2.name),et=encTxt(d2)||(ativoDesde(d2,m)?'':'Sem valor de '+MN[m].toLowerCase()+' em diante');d2.values.forEach(function(v){tot+=Fin.c(v||0)});var r='<tr'+(ativoDesde(d2,m)?'':' class="enc"')+'><td class="cn"><div class="nm" data-acao="eU" data-id="'+esc(d2.id)+'" data-m="'+m+'" role="button" tabindex="0" style="cursor:pointer"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+(et?'<small class="enc-t">'+esc(et)+'</small>':'')+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
+  function linha(d2){var tot=0,ic=[giD(d2)],et=encTxt(d2)||(ativoDesde(d2,m)?'':'Sem valor de '+MN[m].toLowerCase()+' em diante');d2.values.forEach(function(v){tot+=Fin.c(v||0)});var r='<tr class="lin-ed'+(ativoDesde(d2,m)?'':' enc')+'" data-acao="edc" data-tipo="despesas" data-id="'+esc(d2.id)+'" data-m="'+m+'"><td class="cn"><div class="nm" data-acao="eU" data-id="'+esc(d2.id)+'" data-m="'+m+'" role="button" tabindex="0" style="cursor:pointer"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+(et?'<small class="enc-t">'+esc(et)+'</small>':'')+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
     for(var i=0;i<12;i++){var v=d2.values[i],st=stD(d2,i),cs=celStatus(st,v,Fin.ym(DB.curYear,i)>hojeYM());r+='<td class="c '+(i===m?'mhi':'')+'"><button class="st '+cs[0]+'" data-acao="'+(st==='Pendente'?'qp':'eU')+'" data-id="'+esc(d2.id)+'" data-m="'+i+'" data-flash="d|'+esc(d2.id)+'|'+i+'"'+(st==='Pendente'?' title="Pendente: toque para marcar como pago"':'')+'>'+cs[1]+'</button></td>'}
     return r+'<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'}
   var fora=[],foraP=[],porSec={},parc=DB.fD!=='variavel'?parcelasDoAno():[];
-  Y().despesas.forEach(function(d2){if(!passa(refD(d2)))return;if(visD(d2,m)==='historico'){fora.push(d2);return}var k=secaoDesp(d2);(porSec[k]=porSec[k]||{d:[],p:[]}).d.push(d2)});
+  Y().despesas.forEach(function(d2){if(!passa(refD(d2)))return;if(!d2.values.some(function(v){return v>0}))return;if(visD(d2,m)==='historico'){fora.push(d2);return}var k=secaoDesp(d2);(porSec[k]=porSec[k]||{d:[],p:[]}).d.push(d2)});
   parc.forEach(function(g){var dvq=acharDiv(g.dvId);if(dvq&&!passa(refV(dvq)))return;if(!parcAtivaDesde(g,m)||(dvq&&visV(dvq,m)==='historico')){foraP.push(g);return}var k=secaoParc(g);(porSec[k]=porSec[k]||{d:[],p:[]}).p.push(g)});
-  function linhaP(g){var tot=0,ic=gi(nomeParc(g.name)),r='<tr class="dv-linha'+(parcAtivaDesde(g,m)?'':' enc')+'"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(nomeParc(g.name))+'</span></div></td><td>'+tagDiv()+'</td><td class="vc">'+esc(vencTxt(g.venc)||'—')+'</td>';
+  function linhaP(g){var tot=0,dvg=acharDiv(g.dvId),ic=dvg?[giDiv(dvg)]:gi(nomeParc(g.name)),r='<tr class="dv-linha lin-ed'+(parcAtivaDesde(g,m)?'':' enc')+'" data-acao="dv-edit" data-dv="'+esc(g.dvId)+'"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(nomeParc(g.name))+'</span></div></td><td>'+tagDiv()+'</td><td class="vc">'+esc(vencTxt(g.venc)||'—')+'</td>';
     for(var i=0;i<12;i++){var p=g.meses[i];if(!p){r+='<td class="c '+(i===m?'mhi':'')+'"><span class="cv ze">—</span></td>';continue}tot+=Fin.c(p.valor||0);var cs=celStatus(p.status,p.valor,Fin.ym(DB.curYear,i)>hojeYM());r+='<td class="c '+(i===m?'mhi':'')+'">'+btnParcela(p,Fin.ym(DB.curYear,i),cs[0],cs[1])+'</td>'}
     return r+'<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'}
   secoesDef().forEach(function(sd){var b=porSec[sd.k];if(!b)return;
@@ -1367,7 +1369,8 @@ function pgPMes(m){
   Y().despesas.forEach(function(d){var st=stD(d,m),v=d.values[m]||0,sc=secaoDesp(d);
     if(!passa(refD(d)))return;
     if(sc.indexOf('c:')===0)return;                       // gasto do cartão entra na fatura
-    if(visD(d,m)==='historico'||!(v>0)||st==='N/A'){fora.push(d);return}
+    if(!(v>0))return;                                      // sem valor no mês: não aparece
+    if(visD(d,m)==='historico'||st==='N/A'){fora.push(d);return}
     var g=sc==='divida'?div:rec,it={h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)};g.tot+=Fin.c(v);
     if(st==='Pago'){g.pag.push(it);pago+=Fin.c(v)}else{g.abe.push(it);if(st==='Pendente'){g.n++;falta+=Fin.c(v)}}});
   var foraP=[];
@@ -1387,7 +1390,14 @@ function pgPMes(m){
   if(zf.length)h+='<div class="ins yw"><span class="em">'+svg('info')+'</span><div>'+plural(zf.length,'conta fixa está','contas fixas estão')+' sem valor em '+esc(DB.curYear)+' ('+esc(zf.slice(0,3).map(function(x){return x.d.name}).join(', '))+(zf.length>3?'…':'')+'). <button class="lk" onclick="repetirFixas()">Repetir o valor de dezembro de '+(Number(DB.curYear)-1)+'</button></div></div>';
   if(!rec.abe.length&&!rec.pag.length&&!div.abe.length&&!div.pag.length&&!fats.length)h+='<section class="card"><div class="vazio">'+svg('cal')+'<b>Nada planejado em '+mes+'</b>Nenhuma conta com valor neste mês.</div></section>';
   h+=secao('sec-rec','Contas recorrentes','Fixas, variáveis e assinaturas',rec);
-  if(fats.length){h+='<section class="card sec" id="sec-cart"><div class="card-h"><div><h2>Cartões e compras</h2><div class="sec-s">Uma fatura por cartão. Compras do ⚡ "Crédito" entram aqui.</div></div></div>';
+  h+=htmlFaturas(fats,m,'Cartões e compras','Uma fatura por cartão. Compras do ⚡ "Crédito" entram aqui.');
+  h+=secao('sec-div','Outras dívidas','Empréstimos, financiamentos e outras lojas',div);
+  if(fora.length+foraP.length)h+='<section class="card fora-m">'+grp('p-fora','Quitadas e encerradas em '+mes,plural(fora.length+foraP.length,'item','itens'),function(){return '<p class="fd-h" style="margin:0;padding:10px 18px 0">Continuam no cálculo do mês e do ano. <button class="lk" onclick="UI.divAba=\'pa\';UI.abertos[\'dv-quitada\']=1;gp(\'dividas\')">Ver todas as dívidas quitadas</button></p><ul class="lst">'+foraP.map(function(p){return linhaParc(p,ym)}).join('')+fora.map(function(d){return linhaDesp(d,m,{enc:encNoMes(d,m),tipo:!encNoMes(d,m)})}).join('')+'</ul>'})+'</section>';
+  h+='</div>';
+  return h;
+}
+function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.length)return '';
+  h+='<section class="card sec" id="sec-cart"><div class="card-h"><div><h2>'+tit+'</h2><div class="sec-s">'+sub+'</div></div></div>';
     fats.forEach(function(x){var f=x.f,c=x.c,paga=f.falta<=0.009,nAb=f.itens.filter(function(i){return i.status!=='Pago'}).length;
       h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga':' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(f.total)+'</div></div>';
       h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button>')+'</div>';
@@ -1395,12 +1405,8 @@ function pgPMes(m){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
         var d=achar('despesas',i.id);return d?linhaDesp(d,m,{}):''}).join('')+'</ul>'});
       h+='</div>'});
-    h+='</section>'}
-  h+=secao('sec-div','Outras dívidas','Empréstimos, financiamentos e outras lojas',div);
-  h+='<section class="card fora-m">'+grp('p-fora','Histórico: quitadas, encerradas e sem cobrança',plural(fora.length+foraP.length,'item','itens'),function(){return '<p class="fd-h" style="margin:0;padding:10px 18px 0">Continuam no cálculo do mês e do ano. <button class="lk" onclick="UI.divAba=\'pa\';UI.abertos[\'dv-quitada\']=1;gp(\'dividas\')">Ver todas as dívidas quitadas</button></p><ul class="lst">'+foraP.map(function(p){return linhaParc(p,ym)}).join('')+fora.map(function(d){return linhaDesp(d,m,{enc:encNoMes(d,m),tipo:!encNoMes(d,m)})}).join('')+'</ul>'})+'</section>';
-  h+='</div>';
-  return h;
-}
+    return h+'</section>'}
+function faturasDoMes(m){return CARTOES.map(function(c){return{c:c,f:Fin.faturaDoMes(DB,DB.curYear,m,c.k)}}).filter(function(x){return x.f.itens.length})}
 function pgCat(){var cs=Fin.categorias(DB),uso={};
   Object.keys(DB.years).forEach(function(a){['despesas','renda'].forEach(function(l){(DB.years[a][l]||[]).forEach(function(it){var k=Fin.dim(DB,l==='renda'?refR(it,a):refD(it,a)).categoria;uso[k]=(uso[k]||0)+1})})});
   DB.dividas.forEach(function(dv){var k=Fin.dim(DB,refV(dv)).categoria;uso[k]=(uso[k]||0)+1});
@@ -1432,18 +1438,19 @@ function filtroTipo(type,fKey,items){var nf=items.filter(function(x){return x.ti
 function vTB(type,m,title){
   var items=Y()[type],filt=type==='despesas'?filtDe():type==='renda'?filtR():items,hasTipo=type!=='reserva',fKey=type==='despesas'?'fDe':'fR',novo={renda:'Nova renda',despesas:'Nova despesa',reserva:'Nova reserva'}[type];
   if(mob())return vTBMes(type,m,title,filt,hasTipo,fKey,novo);
-  var h='<div class="pg on"><div class="ph"><div class="pt">'+title+' '+esc(DB.curYear)+'<small>Toque no valor para editar'+(type!=='reserva'?' e no nome para renomear':'')+'.</small></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+(hasTipo?(type==='despesas'?filtroDe():filtroTipo(type,fKey,items)):'')+'<button class="ab" onclick="addI(\''+type+'\')">'+svg('plus')+novo+'</button></div></div>';
+  var h='<div class="pg on"><div class="ph"><div class="pt">'+title+' '+esc(DB.curYear)+'<small>Toque no nome ou no valor para editar.</small></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+(hasTipo?(type==='despesas'?filtroDe():filtroTipo(type,fKey,items)):'')+'<button class="ab" onclick="addI(\''+type+'\')">'+svg('plus')+novo+'</button></div></div>';
   h+='<div class="tc"><div class="ts"><table class="t yt"><thead><tr><th class="cn">Categoria</th>'+(hasTipo?'<th>Tipo</th>':'');
   for(var i=0;i<12;i++)h+='<th class="r '+(i===m?'mhh':'')+'">'+SH[i]+'</th>';
   h+='<th class="r tt">Total</th><th class="r tt">Média</th></tr></thead><tbody>';
   var nFech=0;
   var foraT=[];
+  if(type!=='reserva')filt=filt.filter(function(it){return it.values.some(function(v){return v>0})});
   if(type!=='reserva'){filt=filt.filter(function(it){if(Fin.visivel(DB,refDe(type,it),m)==='historico'){nFech++;foraT.push(it);return false}return true})}
   if(type==='renda'){var rg=filt.filter(function(it){return !ehExtra(it)}),ex=filt.filter(ehExtra);filt=rg.concat(ex)}
   var sepX=false;
   filt.forEach(function(it){
-    if(type==='renda'&&!sepX&&ehExtra(it)){sepX=true;h+='<tr class="sep"><td colspan="16">Entradas extras</td></tr>'}var tot=0,avg=avgNZ(it.values),ic=gi(it.name);it.values.forEach(function(v){tot+=Fin.c(v||0)});
-    h+='<tr><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span class="rn" data-acao="ren" data-tipo="'+type+'" data-id="'+esc(it.id)+'" title="Renomear">'+esc(it.name)+'</span></div></td>';
+    if(type==='renda'&&!sepX&&ehExtra(it)){sepX=true;h+='<tr class="sep"><td colspan="16">Entradas extras</td></tr>'}var tot=0,avg=avgNZ(it.values),ic=type==='despesas'?[giD(it)]:gi(it.name);it.values.forEach(function(v){tot+=Fin.c(v||0)});
+    h+='<tr class="lin-ed" data-acao="edc" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+m+'"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span class="rn" data-acao="edc" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+m+'" role="button" tabindex="0" title="Editar">'+esc(it.name)+'</span></div></td>';
     if(hasTipo)h+='<td>'+(type==='renda'&&ehExtra(it)?'<span class="tp tp-x">Extra</span>':'<span class="tp '+(it.tipo==='fixa'?'tp-f':'tp-v')+'">'+(it.tipo==='fixa'?'Fixa':'Var.')+'</span>')+'</td>';
     for(var i=0;i<12;i++){var v=it.values[i],cl=v>0?(type==='renda'?'po':'ne'):'ze',ac=type==='despesas'?'data-acao="eU" data-id="'+esc(it.id)+'" data-m="'+i+'"':'data-acao="eVR" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+i+'"';
       h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv '+cl+'" '+ac+' data-flash="d|'+esc(it.id)+'|'+i+'" role="button" tabindex="0">'+(v>0?fm(v):'—')+'</span></td>'}
@@ -1456,11 +1463,12 @@ function vTB(type,m,title){
     var tc2=0;for(var i=0;i<12;i++){var c=carry(i);tc2+=Fin.c(c);h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv b" style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+(c!==0?fm(c):'—')+'</span></td>'}
     h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tc2))+'</span></td><td class="r tt"><span class="cv ze b">'+fm(Fin.r(Math.round(tc2/12)))+'</span></td></tr>'}
   if(nFech){h+='<tr class="sep fora"><td colspan="16"><span class="sep-l"><button class="lk" onclick="UI.verEnc=!UI.verEnc;R()">'+svg(UI.verEnc?'down':'chev')+' Sem valor de '+MN[m].toLowerCase()+' em diante: '+plural(nFech,'item','itens')+'</button><span class="fora-s">Continuam no cálculo do ano.</span></span></td></tr>';
-    if(UI.verEnc)foraT.forEach(function(it){var tot=0;it.values.forEach(function(v){tot+=Fin.c(v||0)});h+='<tr class="enc"><td class="cn"><div class="nm"><span class="ic">'+gi(it.name)[0]+'</span><span>'+esc(it.name)+'</span></div></td>'+(hasTipo?'<td></td>':'');
+    if(UI.verEnc)foraT.forEach(function(it){var tot=0;it.values.forEach(function(v){tot+=Fin.c(v||0)});h+='<tr class="enc lin-ed" data-acao="edc" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+m+'"><td class="cn"><div class="nm"><span class="ic">'+gi(it.name)[0]+'</span><span>'+esc(it.name)+'</span></div></td>'+(hasTipo?'<td></td>':'');
       for(var i=0;i<12;i++){var v=it.values[i];h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv '+(v>0?'b':'ze')+'" '+(type==='despesas'?'data-acao="eU" data-id="'+esc(it.id)+'" data-m="'+i+'"':'data-acao="eVR" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+i+'"')+' role="button" tabindex="0">'+(v>0?fm(v):'—')+'</span></td>'}
       h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td><td></td></tr>'})}
   h+='</tbody></table></div></div>';
   if(false)h+='<p class="fd-h" style="margin:-8px 0 16px">Linhas marcadas como <strong>Dívida</strong> vêm do plano de cada dívida: o valor muda na página Dívidas.</p>';
+  if(type==='despesas')h+=avisoCartoes();
   if(type==='reserva')h+='<div class="ins gd"><span class="em">'+svg('ok')+'</span>Reserva acumulada até '+MN[m]+': <strong>'+fm(accRe(m))+'</strong></div>';
   h+='</div>';return h}
 // Celular: o mes em lista, com o total do ano em cada linha
@@ -1469,8 +1477,8 @@ function vTBMes(type,m,title,filt,hasTipo,fKey,novo){
   var h='<div class="pg on"><div class="ph"><div class="pt">'+title+'<small>'+MN[m]+' '+esc(DB.curYear)+'</small></div><button class="ab" onclick="addI(\''+type+'\')">'+svg('plus')+'Nova</button></div>';
   if(hasTipo)h+='<div style="margin-bottom:14px">'+(type==='despesas'?filtroDe():filtroTipo(type,fKey,Y()[type]))+'</div>';
   h+='<section class="card"><ul class="lst">';
-  var enc=type==='despesas'?filt.filter(function(it){return encNoMes(it,m)}):[];
-  if(enc.length)filt=filt.filter(function(it){return !encNoMes(it,m)});
+  var enc=type==='despesas'?filt.filter(function(it){return encNoMes(it,m)&&(it.values[m]||0)>0}):[];
+  filt=filt.filter(function(it){return !(type==='despesas'&&encNoMes(it,m))});
   var divD=type==='despesas'?filt.filter(function(it){return ehDivDesp(it)&&(it.values[m]||0)>0}):[];
   var extras=type==='renda'?filt.filter(function(it){return ehExtra(it)&&(it.values[m]||0)>0}):[];
   var com=filt.filter(function(it){return (it.values[m]||0)>0&&divD.indexOf(it)<0&&extras.indexOf(it)<0}),sem=filt.filter(function(it){return !((it.values[m]||0)>0)});
@@ -1483,10 +1491,11 @@ function vTBMes(type,m,title,filt,hasTipo,fKey,novo){
   if(false){var pm2=PM(m),tp=0;pm2.forEach(function(p){tp+=Fin.c(p.valor||0)});divD.forEach(function(it){tp+=Fin.c(it.values[m]||0)});
     if(pm2.length||divD.length)h+=grp('de-parc','Dívidas e cartões',fm(Fin.r(tp)),function(){var ym=Fin.ym(DB.curYear,m);return '<ul class="lst">'+divD.map(function(it){return linhaDesp(it,m,{semFim:1,acao:ac,tipoItem:type})}).join('')+pm2.map(function(p){return linhaParc(p,ym,{semFim:1})}).join('')+'</ul>'});
     tot+=tp}
-  if(sem.length)h+=grp('de-sem-'+type,'Histórico e sem valor em '+mes,plural(sem.length,'item','itens'),function(){return '<ul class="lst">'+sem.map(function(it){return linhaDesp(it,m,{tipo:hasTipo,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
-  if(enc.length)h+=grp('de-enc','Encerradas',plural(enc.length,'conta'),function(){return '<ul class="lst">'+enc.map(function(it){return linhaDesp(it,m,{enc:1,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
+
+  if(enc.length)h+=grp('de-enc','Encerradas em '+mes,plural(enc.length,'conta'),function(){return '<ul class="lst">'+enc.map(function(it){return linhaDesp(it,m,{enc:1,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
   if(type==='renda'){var c=carry(m);h+='<div class="lst-f"><span>Sobra do mês anterior</span><b style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+fm(c)+'</b></div>'}
   h+='<div class="lst-f"><span>Total de '+mes+'</span><b>'+fm(Fin.r(tot))+'</b></div>';
+  if(type==='despesas')h+=avisoCartoes();
   if(type==='reserva')h+='<div class="lst-f"><span>Acumulada até '+SH[m]+'</span><b>'+fm(accRe(m))+'</b></div>';
   h+='</section></div>';
   return h;
@@ -1494,9 +1503,10 @@ function vTBMes(type,m,title,filt,hasTipo,fKey,novo){
 function pgR(m){return vTB('renda',m,'Renda')}
 function pgDe(m){return vTB('despesas',m,'Despesas')}
 // filtro da página Despesas: fixas (fixas e assinaturas), variáveis ou todas
-function fDeAtual(){var f=fPAtual();return f==='dividas'?'todas':f}
-function filtDe(){return Y().despesas.filter(function(d){return Fin.passaFiltro(DB,refD(d),fDeAtual())})}
-function filtroDe(){return chipsFiltro(['dividas'])}
+function fDeAtual(){var f=fPAtual();return (f==='dividas'||f==='cartoes')?'todas':f}
+function filtDe(){return Y().despesas.filter(function(d){return !Fin.cartaoDespesa(DB,d)&&Fin.passaFiltro(DB,refD(d),fDeAtual())})}
+function filtroDe(){return chipsFiltro(['cartoes','dividas'])}
+function avisoCartoes(){var n=Y().despesas.filter(function(d){return Fin.cartaoDespesa(DB,d)}).length;return n?'<p class="fd-h aviso-cart">Gastos de cartão ficam em <button class="lk" onclick="gp(\'dividas\')">Dívidas › Cartões</button>.</p>':''}
 function pgRe(m){return vTB('reserva',m,'Reserva')}
 
 function pgG(m){var ms=[0,1,2,3,4,5,6,7,8,9,10,11],ra=avgNZ(ms.map(function(i){return rendaT(i)})),da=avgNZ(ms.map(function(i){return tD(i)})),pG=ra>0?da/ra*100:0,rt=accRe(11);
@@ -2005,6 +2015,7 @@ function pgDiv(m){
   h+='<div><div class="sx-l">Atrasadas</div><div class="sx-v'+(nAtr?' al':' mu')+'">'+nAtr+'</div><div class="sx-s">de '+abertas.length+' em aberto</div></div>';
   h+='</div>';
   if(nAtr)h+='<div class="ins al"><span class="em">'+svg('clock')+'</span><strong>'+plural(nAtr,'dívida')+'</strong> com parcela vencida sem pagamento.</div>';
+  h+=htmlFaturas(faturasDoMes(DB.mo),DB.mo,'Cartões em '+MN[DB.mo].toLowerCase(),'Fatura de cada cartão: gastos do mês e parcelas. Toque em um item para editar tudo.');
   if(radar.length)h+='<div class="ins"><span class="em">'+svg('info')+'</span>Fora do saldo devedor: <strong>'+radar.length+'</strong> no radar ('+fm(somaC(radar,function(x){return x.r.saldo}))+')'+(enc.length?' · <strong>'+enc.length+'</strong> encerrada(s)':'')+'.</div>';
   if(!lst.length){
     h+='<section class="card"><div class="vazio">'+svg('ok')+'<b>'+(aba==='av'?'Nenhuma compra à vista no cartão':'Nenhuma dívida registrada')+'</b>'+(aba==='av'?'No botão ⚡, escolha "No cartão" e deixe 1 parcela.':'Registre uma dívida para acompanhar saldo e parcelas.')+'<br><button class="btn btn-p" onclick="formDivida()">'+svg('plus')+'Nova dívida</button></div></section>';
@@ -2316,7 +2327,7 @@ var MEIOS=[['pix','Pix'],['dinheiro','Dinheiro'],['debito','Débito'],['credito'
 // mostra ou esconde campos conforme o que foi escolhido
 function edVis(){var o=(document.getElementById('edO')||{}).value,mE=document.getElementById('edM'),meio=mE?mE.value:'';
   var vis=function(id,on){var e=document.getElementById(id);if(e)e.style.display=on?'':'none'};
-  vis('fdComp',o==='conta'||o==='renda');vis('fdCart',meio==='credito'||o==='cartao'||o==='compra');vis('fdVenc',o!=='renda'&&o!=='extra'&&o!=='financiamento')}
+  vis('fdComp',o==='conta'||o==='renda'||o==='assinatura'||o==='cartao');vis('fdCart',meio==='credito'||o==='cartao'||o==='compra');vis('fdVenc',o!=='renda'&&o!=='extra'&&o!=='financiamento')}
 function editarConta(type,id,mo){var it=achar(type,id);if(!it)return;EDIT={tipo:type,id:it.id,m:mo};
   var desp=type==='despesas',res=type==='reserva',ref=res?null:refDe(type,it),d=res?{}:dimDe(ref),fixa=it.tipo==='fixa',ops='';
   for(var k=0;k<12;k++)ops+='<option value="'+k+'"'+(k===mo?' selected':'')+'>'+MN[k]+'</option>';
@@ -2326,7 +2337,7 @@ function editarConta(type,id,mo){var it=achar(type,id);if(!it)return;EDIT={tipo:
   h+='<div class="fd"><label for="ecN">Nome</label><input type="text" id="ecN" class="inp" value="'+esc(it.name)+'" autocomplete="off"></div>';
   if(!res){
     h+='<div class="fd"><label>Tipo</label>'+(desp?chipsSel('edO',d.obrigacao,[['conta','Conta'],['assinatura','Assinatura'],['cartao','Gasto do cartão'],['divida','Dívida']]):chipsSel('edO',d.obrigacao,[['renda','Renda do mês'],['extra','Extra'],['financiamento','Empréstimo recebido']]))+'</div>';
-    h+='<div class="fd" id="fdComp"><label>Comportamento</label>'+tglGrupo('ecT',fixa?'fixa':'variavel',[['fixa','Fixa (repete todo mês)'],['variavel','Variável']])+'</div>';
+    h+='<div class="fd" id="fdComp"><label>Fixa ou variável</label>'+tglGrupo('ecT',fixa?'fixa':'variavel',[['fixa','Fixa (repete todo mês)'],['variavel','Variável']])+'</div>';
     h+='<div class="fd"><label for="ecCat">Categoria</label>'+selCatRef('ecCat',ref)+'</div>';
     if(desp)h+='<div class="fd"><label>Meio de pagamento</label>'+chipsSel('edM',d.meio||'',MEIOS)+'</div>'+
       '<div class="fd" id="fdCart"><label>Banco ou cartão</label>'+chipsSel('edC',d.cartao||'',opsCartao())+'</div>'+
@@ -2351,7 +2362,7 @@ function sEditarConta(){var c=EDIT,it=c&&achar(c.tipo,c.id);if(!it){cmo();return
   if(nome!==it.name&&c.tipo!=='reserva'){Fin.renomearMeta(DB,c.tipo==='renda'?'renda':'desp',it.name,nome);it.name=nome}else it.name=nome;
   if(c.tipo!=='reserva'){var ref=refDe(c.tipo,it),patch={},g=function(id){var e=document.getElementById(id);return e?e.value:null};
     var o=g('edO');if(o!==null)patch.obrigacao=o;
-    var t=g('ecT');if(t!==null&&(o==='conta'||o==='renda'||o===null))patch.comportamento=t;
+    var t=g('ecT');if(t!==null&&(o==='conta'||o==='renda'||o==='assinatura'||o==='cartao'||o===null))patch.comportamento=t;
     if(o==='assinatura')patch.comportamento='fixa';
     var cat=g('ecCat');if(cat!==null)patch.categoria=cat;
     var meio=g('edM');if(meio!==null)patch.meio=meio;
