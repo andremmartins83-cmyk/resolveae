@@ -897,7 +897,8 @@ function puxarDaNuvem(silencioso){
   var assin0=assinatura();
   syncUI('enviando','Carregando…');
   return apiGet('load').then(function(r){
-    if(!r||!r.ok){syncUI('erro',r&&r.erro==='chave-invalida'?'Chave inválida — toque aqui':'Erro ao carregar');return false}
+    SYNC.chaveInvalida=!!(r&&r.erro==='chave-invalida');
+    if(!r||!r.ok){syncUI('erro',SYNC.chaveInvalida?'Chave não confere — toque aqui':'Erro ao carregar');return false}
     // Mexeu no app antes da nuvem responder: nao sobrescreve nada sem perguntar
     if(SYNC.alterouOffline){NUVEM_PENDENTE=r;syncUI('erro','Duas versões — toque aqui');avisarConflito();return false}
     // Mexeu DURANTE a leitura, ou ha envio pendente: esta leitura ja nasceu velha, descarta.
@@ -1083,7 +1084,7 @@ function confirmarMigracao(){
 }
 
 function sincronizarAgora(){
-  if(!KEY){pedirChave();return}
+  if(!KEY||SYNC.chaveInvalida){pedirChave();return}
   if(SYNC.alterouOffline){avisarConflito();return}
   if(SYNC.migracaoPendente&&!SYNC.migracaoOk){avisarMigracao();return}
   if(!SYNC.pronto){puxarDaNuvem();return}
@@ -1091,16 +1092,26 @@ function sincronizarAgora(){
 }
 function pedirChave(){
   om('<h3>Conectar à planilha</h3><p class="ms">Cole a chave de acesso da sua planilha</p>'+
-  '<div class="fd"><label>Chave</label><input type="text" id="chIn" placeholder="ex: abcd1234efgh" value="'+esc(KEY)+'" autocomplete="off"></div>'+
-  '<div class="fd-h">Sem chave, o app funciona só neste aparelho.</div>'+
+  '<div class="fd"><label for="chIn">Chave</label><input type="text" id="chIn" class="inp" placeholder="ex: abcd1234efgh" value="'+esc(KEY)+'" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>'+
+  '<div class="fd-h" id="chMsg" role="status">Pode colar a chave ou o link inteiro. Sem chave, o app funciona só neste aparelho.</div>'+
   '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="salvarChave()">Conectar</button></div>');
   setTimeout(function(){var e=document.getElementById('chIn');if(e)e.focus()},100);
 }
+// Aceita a chave ou o link com ?k=; tira espaços e maiúsculas que o teclado do celular coloca
+function normalizarChave(v){
+  v=String(v==null?'':v).trim();
+  var m=v.match(/[?&]k=([^&#\s]+)/);if(m){try{v=decodeURIComponent(m[1])}catch(e){v=m[1]}}
+  return v.replace(/\s+/g,'').toLowerCase();
+}
+// Confere a chave na planilha ANTES de guardar: chave errada não fica salva no aparelho
 function salvarChave(){
-  var v=document.getElementById('chIn').value.trim();
-  if(!v)return;
-  lsSet('key',v);
-  KEY=v;cmo();puxarDaNuvem();
+  var e=document.getElementById('chIn'),msg=document.getElementById('chMsg'),v=normalizarChave(e.value);
+  if(!v){if(msg)msg.textContent='Digite a chave.';return}
+  e.value=v;if(msg)msg.textContent='Conferindo a chave…';
+  fetch(API+(API.indexOf('?')>=0?'&':'?')+'action=ping&k='+encodeURIComponent(v),{method:'GET',cache:'no-store'}).then(function(r){return r.json()}).then(function(r){
+    if(r&&r.erro==='chave-invalida'){if(msg)msg.textContent='Essa chave não confere. Confira letra por letra ou cole o link do app.';e.focus();return}
+    lsSet('key',v);KEY=v;SYNC.chaveInvalida=false;cmo();puxarDaNuvem();
+  }).catch(function(){lsSet('key',v);KEY=v;SYNC.chaveInvalida=false;cmo();puxarDaNuvem()});
 }
 
 // ===== VALORES E TOTAIS (regras no motor: financas.js) =====
@@ -1221,7 +1232,7 @@ aplicarFlash()}
 function telaCarga(){
   if(!NASCEU_VAZIO||SYNC.carregouNuvem)return '';
   if(!KEY)return '<div class="pg on" id="estadoCarga"><div class="vazio">'+svg('file')+'<b>Conecte sua planilha</b>Com a chave de acesso o app carrega seus dados e salva tudo na planilha.<br><button class="btn btn-p" onclick="pedirChave()">Conectar</button></div></div>';
-  if(SYNC.estado==='erro'||SYNC.estado==='offline')return '<div class="pg on" id="estadoCarga"><div class="vazio">'+svg('alert')+'<b>Não consegui carregar a planilha</b>'+esc(SYNC.msg)+'<br><button class="btn btn-p" onclick="sincronizarAgora()">Tentar de novo</button></div></div>';
+  if(SYNC.estado==='erro'||SYNC.estado==='offline')return '<div class="pg on" id="estadoCarga"><div class="vazio">'+svg('alert')+'<b>Não consegui carregar a planilha</b>'+esc(SYNC.msg)+'<br><button class="btn btn-p" onclick="sincronizarAgora()">'+(SYNC.chaveInvalida?'Digitar a chave de novo':'Tentar de novo')+'</button></div></div>';
   return '<div class="pg on carga" id="estadoCarga" aria-busy="true"><div class="carga-msg"><span class="dot wn"></span>Carregando sua planilha…</div><div class="sk" style="height:200px"></div><div class="sk" style="height:320px"></div></div>';
 }
 // Destaca so o elemento que mudou, depois de pintar (nunca anima a pagina inteira)
