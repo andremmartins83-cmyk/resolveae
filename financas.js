@@ -441,6 +441,44 @@
     it.values[mes0] = r(c(antes) + vc);
     return { ok: true, item: it, antes: antes };
   };
+  // Renomeia a reserva em todos os anos (o saldo passa de um ano para o outro pelo nome).
+  Fin.renomearReserva = function (DB, nome, novo) {
+    var n = normNome(nome), nv = String(novo || '').trim(), nn = normNome(nv), qtd = 0;
+    if (!n) return { ok: false, erro: 'Reserva inválida.' };
+    if (!nn) return { ok: false, erro: 'Informe o nome.' };
+    var conflito = false;
+    Object.keys((DB && DB.years) || {}).forEach(function (y) {
+      (DB.years[y].reserva || []).forEach(function (x) { if (normNome(x.name) === nn && nn !== n) conflito = true; });
+    });
+    if (conflito) return { ok: false, erro: 'Já existe uma reserva com esse nome.' };
+    Object.keys(DB.years).forEach(function (y) {
+      (DB.years[y].reserva || []).forEach(function (x) { if (normNome(x.name) === n) { x.name = nv; qtd++; } });
+    });
+    return qtd ? { ok: true, qtd: qtd } : { ok: false, erro: 'Reserva não encontrada.' };
+  };
+  // Exclui a reserva de todos os anos. Só se nunca teve movimento (senão mudaria saldos passados).
+  // Devolve {ok, removidos:[{ano, pos, item}]} para desfazer com Fin.restaurarReserva.
+  Fin.excluirReserva = function (DB, nome) {
+    var n = normNome(nome), mov = false, removidos = [];
+    Object.keys((DB && DB.years) || {}).forEach(function (y) {
+      (DB.years[y].reserva || []).forEach(function (x) {
+        if (normNome(x.name) === n && (x.values || []).some(function (v) { return c(v) !== 0; })) mov = true;
+      });
+    });
+    if (mov) return { ok: false, erro: 'Essa reserva tem valores guardados ou resgatados. Para não mudar o saldo dos meses passados, ela não pode ser excluída; zere os valores antes ou renomeie.' };
+    Object.keys(DB.years).forEach(function (y) {
+      var l = DB.years[y].reserva || [];
+      for (var i = l.length - 1; i >= 0; i--) if (normNome(l[i].name) === n) removidos.push({ ano: y, pos: i, item: l.splice(i, 1)[0] });
+    });
+    return removidos.length ? { ok: true, removidos: removidos } : { ok: false, erro: 'Reserva não encontrada.' };
+  };
+  Fin.restaurarReserva = function (DB, removidos) {
+    (removidos || []).slice().reverse().forEach(function (r0) {
+      var Y = DB.years[r0.ano]; if (!Y) return;
+      if (!Y.reserva) Y.reserva = [];
+      Y.reserva.splice(Math.min(r0.pos, Y.reserva.length), 0, r0.item);
+    });
+  };
   // ===================== configuração do app e contas encerradas =====================
   // A configuração mora num registro da lista de divergências (tipo 'config'), porque a planilha
   // já guarda esse registro com um campo JSON livre. Não é divergência: as telas o ignoram.

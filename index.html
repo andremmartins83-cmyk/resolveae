@@ -169,6 +169,7 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 .tcb{font-size:11px;font-weight:700;min-width:22px;height:20px;line-height:20px;padding:0 7px;border-radius:10px;font-family:var(--mono);text-align:center;background:var(--ap);color:var(--t2)}
 .br2{background:var(--r50);color:var(--r6)}
 .lst{list-style:none}
+.row-ed{flex:0 0 auto;width:44px;height:44px;margin-right:8px;display:inline-flex;align-items:center;justify-content:center;border:0;background:0;border-radius:var(--rs);color:var(--t2);cursor:pointer}.row-ed:hover{background:var(--ap)}.row-ed .i{width:17px;height:17px}
 .row{display:flex;align-items:center;border-bottom:1px solid var(--bl);transition:opacity var(--d2) var(--ease),transform var(--d2) var(--ease)}
 .row:last-child{border-bottom:0}
 .row.saindo{opacity:0;transform:translateX(16px)}
@@ -1594,11 +1595,30 @@ function pgRe(m){
   h+='<section class="card"><ul class="lst">';
   if(!lst.length)h+='<li class="vazio">Nenhuma reserva ainda. Toque em Guardar.</li>';
   lst.forEach(function(x){var sub=x.mov>0?'Guardou '+fm(x.mov)+' em '+mes:x.mov<0?'Resgatou '+fm(-x.mov)+' em '+mes:'Sem movimento em '+mes;
-    h+='<li class="row"><button class="row-main" data-acao="res-mov" data-mv="g" data-n="'+esc(x.nome)+'"><span class="ic">'+icRes(x.nome)+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span><span class="row-s">'+sub+'</span></span><span class="row-v ok">'+fm(x.saldo)+'</span></button></li>'});
+    h+='<li class="row"><button class="row-main" data-acao="res-mov" data-mv="g" data-n="'+esc(x.nome)+'"><span class="ic">'+icRes(x.nome)+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span><span class="row-s">'+sub+'</span></span><span class="row-v ok">'+fm(x.saldo)+'</span></button><button class="row-ed" data-acao="res-ed" data-n="'+esc(x.nome)+'" aria-label="Editar reserva '+esc(x.nome)+'" title="Renomear ou excluir">'+svg('edit')+'</button></li>'});
   h+='</ul></section>';
   h+='<div class="ins"><span class="em">'+svg('info')+'</span>O que vai para a reserva sai da sobra do mês, para a sobra mostrar só o que dá para gastar. Para usar o dinheiro de uma reserva, toque em Resgatar.</div>';
   return h+'</div>'}
 
+var REF={};
+function editarReserva(nome){
+  REF={nome:nome};
+  om('<h3>Editar reserva</h3><p class="ms">O nome muda em todos os meses e anos. O saldo continua o mesmo.</p>'+
+  '<div class="fd"><label for="reN">Nome</label><input type="text" id="reN" class="inp" value="'+esc(nome)+'" maxlength="60"></div>'+
+  '<div class="mac"><button class="btn btn-g" onclick="excluirReservaUI()">'+svg('trash')+'Excluir</button><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="salvarReserva()">Salvar</button></div>');
+}
+function salvarReserva(){
+  var novo=document.getElementById('reN').value.trim(),ant=REF.nome;
+  if(novo===ant){cmo();return}
+  var r=Fin.renomearReserva(DB,ant,novo);
+  if(!r.ok){erroCampo('reN',r.erro);return}
+  cmo();toast('Reserva renomeada · '+novo,function(){Fin.renomearReserva(DB,novo,ant);toast('Nome desfeito');R()},8000);R();
+}
+function excluirReservaUI(){
+  var nome=REF.nome,r=Fin.excluirReserva(DB,nome);
+  if(!r.ok){erroCampo('reN',r.erro);return}
+  cmo();toast('Reserva excluída · '+nome,function(){Fin.restaurarReserva(DB,r.removidos);toast('Exclusão desfeita');R()},10000);R();
+}
 function pgG(m){var ms=[0,1,2,3,4,5,6,7,8,9,10,11],ra=avgNZ(ms.map(function(i){return tR(i)})),da=avgNZ(ms.map(function(i){return tD(i)})),pG=ra>0?da/ra*100:0,rt=accRe(11);
 var h='<div class="pg on"><div class="pt">Raio-X '+esc(DB.curYear)+'<small>Médias dos meses com valor.</small></div><div class="stats"><div><div class="sx-l">Renda média</div><div class="sx-v ok">'+fm(ra)+'</div><div class="sx-s">sem a sobra do mês anterior</div></div><div><div class="sx-l">Despesa média</div><div class="sx-v">'+fm(da)+'</div><div class="sx-s">com parcelas</div></div><div><div class="sx-l">Comprometimento</div><div class="sx-v '+(pG>100?'al':'ok')+'">'+pG.toFixed(0)+'%</div><div class="sx-s">despesa ÷ renda</div></div><div><div class="sx-l">Reserva acumulada</div><div class="sx-v">'+fm(rt)+'</div><div class="sx-s">até dezembro</div></div></div>';
 var mxV=1;for(var i=0;i<12;i++){var rv=tR(i),dv=tD(i);if(rv>mxV)mxV=rv;if(dv>mxV)mxV=dv}
@@ -1922,6 +1942,7 @@ function erroCampo(id,msg){
 var ACOES={
   'conf-banco':function(){abrirConfBanco()},
   'res-mov':function(d){abrirLancReserva(d.mv,d.n||'')},
+  'res-ed':function(d){editarReserva(d.n)},
   dlg:function(d){var f=DLG[Number(d.i)];cmo();if(f)f()},
   qp:function(d,el){qp(d.id,Number(d.m),el)},
   pp:function(d,el){pagarParcelaRapido(d.dv,d.ym,el)},
