@@ -775,8 +775,11 @@
     if (kind === 'div') o.comportamento = COMPORTAMENTOS.indexOf(mt.comportamento) >= 0 ? mt.comportamento : 'variavel';
     else o.comportamento = it.tipo === 'fixa' ? 'fixa' : 'variavel';
     var ic = icones[normNome(it.name)];
+    var palpite = Fin.categoriaPorNome(it.name);
+    // entrada sem categoria escolhida fica em Salário e renda (exceto empréstimo/limite, que é financeiro)
+    if (kind === 'renda' && palpite !== 'financeiro') palpite = 'renda';
     o.categoria = (typeof mt.categoria === 'string' && mt.categoria) ? mt.categoria
-      : ((typeof ic === 'string' && ic) ? ic : Fin.categoriaPorNome(it.name));
+      : ((typeof ic === 'string' && ic) ? ic : palpite);
     o.subcategoria = typeof mt.subcategoria === 'string' ? mt.subcategoria : '';
     if (kind === 'div') o.cartao = cartaoDivMeta(cfg, meta, it);
     else if (kind === 'desp') o.cartao = cartaoDespMeta(meta, it);
@@ -957,33 +960,45 @@
     { k: 'mercado', n: 'Mercado', icone: '🛒' },
     { k: 'alimentacao', n: 'Restaurante e delivery', icone: '🍽️' },
     { k: 'transporte', n: 'Transporte e carro', icone: '🚗' },
-    { k: 'saude', n: 'Saúde', icone: '🩺' },
+    { k: 'saude', n: 'Saúde', icone: '💊' },
+    { k: 'academia', n: 'Academia e bem-estar', icone: '🏋️' },
     { k: 'educacao', n: 'Educação', icone: '🎓' },
-    { k: 'lazer', n: 'Lazer e assinaturas', icone: '🎬' },
-    { k: 'roupas', n: 'Roupas e beleza', icone: '👕' },
+    { k: 'lazer', n: 'Streaming e apps', icone: '🎬' },
+    { k: 'roupas', n: 'Roupas e calçados', icone: '👕' },
+    { k: 'beleza', n: 'Beleza e cuidados', icone: '💄' },
+    { k: 'compras-online', n: 'Compras online', icone: '📦' },
     { k: 'presentes', n: 'Presentes', icone: '🎁' },
     { k: 'itens-casa', n: 'Itens para casa', icone: '🛋️' },
     { k: 'viagem', n: 'Viagem', icone: '✈️' },
+    { k: 'casamento', n: 'Casamento', icone: '💍' },
+    { k: 'dizimo', n: 'Dízimo e doações', icone: '⛪' },
+    { k: 'trabalho', n: 'Trabalho e CNPJ', icone: '💼' },
     { k: 'pets', n: 'Pets', icone: '🐾' },
-    { k: 'financeiro', n: 'Banco, taxas e empréstimos', icone: '🏦' },
+    { k: 'financeiro', n: 'Banco, cartão e empréstimos', icone: '🏦' },
     { k: 'impostos', n: 'Impostos e documentos', icone: '📋' },
     { k: 'renda', n: 'Salário e renda', icone: '💰' },
     { k: 'outros', n: 'Outros', icone: '📌' }
   ];
   // ordem importa: o primeiro grupo com a palavra inteira (ou no plural com 's') ganha
   var PALAVRAS_CAT = [
-    ['impostos', ['das', 'iptu', 'ipva', 'imposto']],
+    ['dizimo', ['dizimo', 'oferta', 'igreja', 'doacao']],
+    ['trabalho', ['das', 'cnpj', 'contador', 'contabilidade', 'e-mail comercial', 'email comercial', 'claude']],
+    ['impostos', ['iptu', 'ipva', 'imposto']],
+    ['casamento', ['casamento', 'noiva', 'noivado']],
     ['financeiro', ['emprestimo', 'consorcio', 'financiamento', 'limite', 'banco', 'parcelas']],
     ['casa', ['aluguel', 'condominio', 'garagem', 'limpeza', 'moradia']],
     ['contas', ['luz', 'agua', 'gas', 'energia']],
     ['telefone', ['vivo', 'claro', 'tim', 'internet', 'celular']],
-    ['mercado', ['mercado', 'supermercado', 'padaria']],
-    ['alimentacao', ['restaurante', 'ifood', 'delivery']],
-    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento', 'oleo', 'pneu']],
-    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'gympass', 'academia', 'lente', 'oculos', 'medico', 'exame', 'monjaro']],
+    ['compras-online', ['mercado livre', 'shopee', 'shoope', 'tiktok', 'shein', 'aliexpress']],
+    ['mercado', ['mercado', 'supermercado', 'padaria', 'sabao', 'churrasco']],
+    ['alimentacao', ['restaurante', 'ifood', 'delivery', 'cafe', 'coffe', 'coffee', 'sorvete', 'pizza', 'lanche', 'sushi', 'pastel']],
+    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento', 'oleo', 'pneu', 'transporte', 'trans', 'onibus', 'metro']],
+    ['academia', ['gympass', 'wellhub', 'academia', 'smart fit']],
+    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'lente', 'oculos', 'medico', 'exame', 'monjaro']],
     ['educacao', ['faculdade', 'curso', 'livro', 'kindle', 'escola', 'biblia', 'uninove']],
-    ['lazer', ['netflix', 'spotify', 'spotfy', 'claude', 'icloud', 'amazon']],
-    ['roupas', ['renner', 'c&a', 'h&m', 'roupa', 'tenis', 'barbearia', 'barbeiro', 'maquiagem', 'perfume', 'riachuelo', 'zara', 'bershka', 'vestido', 'salto', 'terno', 'blusa', 'camiseta', 'calca', 'jaqueta', 'chinelo', 'vivara', 'pulseira', 'relogio', 'depilacao', 'calcinha', 'biquini']],
+    ['lazer', ['netflix', 'spotify', 'spotfy', 'icloud', 'amazon', 'disney', 'youtube']],
+    ['beleza', ['barbearia', 'barbeiro', 'maquiagem', 'perfume', 'depilacao', 'vivara', 'pulseira', 'relogio', 'brinco', 'brincos', 'salao', 'manicure', 'unha']],
+    ['roupas', ['renner', 'c&a', 'h&m', 'roupa', 'tenis', 'riachuelo', 'zara', 'bershka', 'vestido', 'salto', 'terno', 'blusa', 'camiseta', 'calca', 'jaqueta', 'chinelo', 'calcinha', 'biquini']],
     ['presentes', ['presente', 'natal', 'amigo secreto']],
     ['viagem', ['viagem', 'airbnb', 'passeio', 'lua de mel', 'monte verde', 'campos do jordao', 'cataratas', 'duty free', 'aeroporto', 'hotel', 'praia']],
     ['itens-casa', ['geladeira', 'microondas', 'maquina', 'cooktop', 'tv', 'projetor', 'tinta', 'notbook', 'notebook', 'movel', 'moveis', 'lixa', 'pintura', 'aspirador', 'batedeira', 'varal', 'mesa', 'cabeceira', 'cabiceira', 'casa']],

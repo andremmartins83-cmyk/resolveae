@@ -671,6 +671,11 @@ tr.auto td,tr.auto td.cn{background:var(--b50)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:150ms!important;animation-iteration-count:1!important;transition-duration:150ms!important;transition-property:opacity,color,background-color,border-color!important}.sb{transition:none}}
 @media(max-width:760px){.ab{min-height:44px}.tgl-o{min-height:44px}.lk{min-height:44px;display:inline-flex;align-items:center}.btn{min-height:44px}}
 .grp[open]>.grp-b{animation:grpIn 200ms var(--ease) both}@keyframes grpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.i3d{width:1.55em;height:1.55em;object-fit:contain;display:inline-block;vertical-align:middle;pointer-events:none}
+.ic .i3d,.ic-c>.i3d{width:76%;height:76%;display:block}
+.ic>.ic-c:not(.ic-cart){width:100%;height:100%}
+.ic-e .i3d{width:86%;height:86%}
+.emj-b .i3d{width:30px;height:30px;margin:auto}
 </style>
 </head>
 <body>
@@ -693,7 +698,10 @@ function refR(it,ano){return {kind:'renda',ano:String(ano||DB.curYear),item:it}}
 function refV(dv){return {kind:'div',item:dv}}
 function refDe(type,it){return type==='renda'?refR(it):refD(it)}
 function dimDe(ref){try{return Fin.dim(DB,ref)}catch(e){return {}}}
-function catIcone(k){return Fin.iconeCategoria(DB,k||'outros')||'📌'}
+// Ícones 3D (Fluent Emoji da Microsoft, licença MIT) em app/icones; emoji sem versão 3D aparece como texto
+var I3D={"🏠":"house","🏢":"office_building","🔑":"key","💡":"light_bulb","🔥":"fire","💧":"droplet","📱":"mobile_phone","📡":"satellite_antenna","🛒":"shopping_cart","🥖":"baguette_bread","🍽":"fork_and_knife_with_plate","☕":"hot_beverage","🚗":"automobile","⛽":"fuel_pump","🚌":"bus","🛡":"shield","🩺":"stethoscope","💊":"pill","🦷":"tooth","🏋":"person_lifting_weights","🎓":"graduation_cap","📚":"books","🎬":"clapper_board","🎵":"musical_note","🎮":"video_game","🤖":"robot","👟":"running_shoe","💄":"lipstick","💈":"barber_pole","🎁":"wrapped_gift","🎄":"christmas_tree","🛋":"couch_and_lamp","🧹":"broom","🧺":"basket","✈":"airplane","🏖":"beach_with_umbrella","🐾":"paw_prints","👶":"baby","🏦":"bank","💳":"credit_card","📋":"clipboard","🏛":"classical_building","💰":"money_bag","📈":"chart_increasing","🐷":"pig_face","⛪":"church","🎉":"party_popper","🔧":"wrench","📦":"package","📌":"pushpin","💍":"ring","💼":"briefcase","💅":"nail_polish","🛍":"shopping_bags","💻":"laptop","🍔":"hamburger","🧾":"receipt","🎂":"birthday_cake","🏥":"hospital","⚡":"high_voltage","👕":"t_shirt"};
+function ic3d(e){var f=I3D[String(e||'').replace(/\uFE0F/g,'')];return f?'<img class="i3d" src="icones/'+f+'.png" alt="" aria-hidden="true" decoding="async">':esc(e||'')}
+function catIcone(k){return ic3d(Fin.iconeCategoria(DB,k||'outros')||'📌')}
 function cfgRaw(){if(typeof DB==='undefined'||!DB)return {};var g=(DB.divergencias||[]).filter(function(x){return x&&x.id===Fin.CFG_ID})[0];return (g&&g.dados)||{}}
 // seletor de categoria (lista do modelo, com ícone)
 function selCatRef(id,ref){var atual=dimDe(ref).categoria,h='<select id="'+id+'" class="inp">';
@@ -1483,12 +1491,12 @@ function pgCat(){var cs=Fin.categorias(DB),uso={};
   Object.keys(DB.years).forEach(function(a){['despesas','renda'].forEach(function(l){(DB.years[a][l]||[]).forEach(function(it){var k=Fin.dim(DB,l==='renda'?refR(it,a):refD(it,a)).categoria;uso[k]=(uso[k]||0)+1})})});
   DB.dividas.forEach(function(dv){var k=Fin.dim(DB,refV(dv)).categoria;uso[k]=(uso[k]||0)+1});
   var h='<div class="pg on"><div class="ph"><div class="pt">Categorias<small>Toque para trocar nome e ícone</small></div><button class="ab" onclick="editarCat()">'+svg('plus')+'Nova</button></div><section class="card"><ul class="lst">';
-  cs.forEach(function(c){h+='<li class="row"><button class="row-main" onclick="editarCat(\''+esc(c.k)+'\')"><span class="ic">'+c.icone+'</span><span class="row-tx"><span class="row-t">'+esc(c.n)+'</span><span class="row-s">'+plural(uso[c.k]||0,'registro','registros')+'</span></span><span class="row-v mu">'+svg('chev')+'</span></button></li>'});
+  cs.forEach(function(c){h+='<li class="row"><button class="row-main" onclick="editarCat(\''+esc(c.k)+'\')"><span class="ic">'+ic3d(c.icone)+'</span><span class="row-tx"><span class="row-t">'+esc(c.n)+'</span><span class="row-s">'+plural(uso[c.k]||0,'registro','registros')+'</span></span><span class="row-v mu">'+svg('chev')+'</span></button></li>'});
   return h+'</ul></section><p class="fd-h">A categoria de cada conta, renda ou dívida é escolhida no painel de edição do registro.</p></div>'}
-var EMOJIS='🏠 🏢 🔑 💡 🔥 💧 📱 📡 🛒 🥖 🍽️ ☕ 🚗 ⛽ 🚌 🛡️ 🩺 💊 🦷 🏋️ 🎓 📚 🎬 🎵 🎮 🤖 👕 👟 💄 💈 🎁 🎄 🛋️ 🧹 🧺 ✈️ 🏖️ 🐾 👶 🏦 💳 📋 🏛️ 💰 📈 🐷 ⛪ 🎉 🔧 📦 📌'.split(' ');
+var EMOJIS='🏠 🏢 🔑 💡 🔥 ⚡ 💧 📱 📡 💻 🛒 🥖 🍽️ 🍔 ☕ 🎂 🚗 ⛽ 🚌 🛡️ 🩺 💊 🏥 🦷 🏋️ 🎓 📚 🎬 🎵 🎮 🤖 👕 👟 💄 💅 💈 🛍️ 📦 🎁 🎄 💍 🛋️ 🧹 🧺 ✈️ 🏖️ 🐾 👶 🏦 💳 🧾 📋 🏛️ 💼 💰 📈 🐷 ⛪ 🎉 🔧 📌'.split(' ');
 function editarCat(k){var c=k?Fin.categorias(DB).filter(function(x){return x.k===k})[0]:{k:'',n:'',icone:'📌'};if(!c)return;EDIT={cat:k||''};
   om('<h3>'+(k?'Editar categoria':'Nova categoria')+'</h3><div class="fd"><label for="ctN">Nome</label><input type="text" id="ctN" class="inp" value="'+esc(c.n)+'"></div>'+
-    '<div class="fd"><label>Ícone</label><div class="emj" role="radiogroup">'+EMOJIS.map(function(e){return '<button type="button" class="emj-b'+(e===c.icone?' on':'')+'" role="radio" aria-checked="'+(e===c.icone)+'" onclick="var b=this.parentElement.querySelectorAll(\'.emj-b\');for(var i=0;i<b.length;i++)b[i].classList.remove(\'on\');this.classList.add(\'on\');document.getElementById(\'ctI\').value=\''+e+'\'">'+e+'</button>'}).join('')+'</div><input type="hidden" id="ctI" value="'+c.icone+'"></div>'+
+    '<div class="fd"><label>Ícone</label><div class="emj" role="radiogroup">'+EMOJIS.map(function(e){return '<button type="button" class="emj-b'+(e===c.icone?' on':'')+'" role="radio" aria-checked="'+(e===c.icone)+'" onclick="var b=this.parentElement.querySelectorAll(\'.emj-b\');for(var i=0;i<b.length;i++)b[i].classList.remove(\'on\');this.classList.add(\'on\');document.getElementById(\'ctI\').value=\''+e+'\'" aria-label="'+e+'">'+ic3d(e)+'</button>'}).join('')+'</div><input type="hidden" id="ctI" value="'+c.icone+'"></div>'+
     '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="sCat()">Salvar</button></div>')}
 function sCat(){var n=document.getElementById('ctN').value.trim(),ic=document.getElementById('ctI').value;if(!n){erroCampo('ctN','Digite o nome.');return}
   if(EDIT.cat)Fin.setCategoria(DB,EDIT.cat,{n:n,icone:ic});else Fin.addCategoria(DB,{n:n,icone:ic});cmo();toast('Categoria salva · '+n);R()}
@@ -1595,7 +1603,7 @@ function pgRe(m){
   h+='<section class="card"><ul class="lst">';
   if(!lst.length)h+='<li class="vazio">Nenhuma reserva ainda. Toque em Guardar.</li>';
   lst.forEach(function(x){var sub=x.mov>0?'Guardou '+fm(x.mov)+' em '+mes:x.mov<0?'Resgatou '+fm(-x.mov)+' em '+mes:'Sem movimento em '+mes;
-    h+='<li class="row"><button class="row-main" data-acao="res-mov" data-mv="g" data-n="'+esc(x.nome)+'"><span class="ic">'+icRes(x.nome)+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span><span class="row-s">'+sub+'</span></span><span class="row-v ok">'+fm(x.saldo)+'</span></button><button class="row-ed" data-acao="res-ed" data-n="'+esc(x.nome)+'" aria-label="Editar reserva '+esc(x.nome)+'" title="Renomear ou excluir">'+svg('edit')+'</button></li>'});
+    h+='<li class="row"><button class="row-main" data-acao="res-mov" data-mv="g" data-n="'+esc(x.nome)+'"><span class="ic">'+ic3d(icRes(x.nome))+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span><span class="row-s">'+sub+'</span></span><span class="row-v ok">'+fm(x.saldo)+'</span></button><button class="row-ed" data-acao="res-ed" data-n="'+esc(x.nome)+'" aria-label="Editar reserva '+esc(x.nome)+'" title="Renomear ou excluir">'+svg('edit')+'</button></li>'});
   h+='</ul></section>';
   h+='<div class="ins"><span class="em">'+svg('info')+'</span>O que vai para a reserva sai da sobra do mês, para a sobra mostrar só o que dá para gastar. Para usar o dinheiro de uma reserva, toque em Resgatar.</div>';
   return h+'</div>'}
@@ -2879,7 +2887,7 @@ function resBtns(){
   lst.forEach(function(x){vistos[Fin.normNome(x.nome)]=1});
   LC.extras.forEach(function(n){if(!vistos[Fin.normNome(n)]){vistos[Fin.normNome(n)]=1;lst.push({nome:n,saldo:0,mov:0})}});
   LC.lista=lst.map(function(x){return x.nome});
-  return lst.map(function(x,i){return '<button type="button" class="lc-cat'+(LC.cat===x.nome?' on':'')+'" role="option" aria-selected="'+(LC.cat===x.nome)+'" onclick="lcCat(this,'+i+')"><span class="e">'+icRes(x.nome)+'</span><span class="n">'+esc(x.nome)+'<small class="lc-sd">'+fm(x.saldo)+'</small></span></button>'}).join('')+
+  return lst.map(function(x,i){return '<button type="button" class="lc-cat'+(LC.cat===x.nome?' on':'')+'" role="option" aria-selected="'+(LC.cat===x.nome)+'" onclick="lcCat(this,'+i+')"><span class="e">'+ic3d(icRes(x.nome))+'</span><span class="n">'+esc(x.nome)+'<small class="lc-sd">'+fm(x.saldo)+'</small></span></button>'}).join('')+
     '<button type="button" class="lc-cat nova" role="option" aria-selected="false" onclick="lcNovaCat()">'+svg('plus')+'<span class="n">Nova reserva</span></button>';
 }
 // ===== conferir com o banco =====
