@@ -392,6 +392,12 @@ tr.auto td,tr.auto td.cn{background:var(--b50)}
 .lc-cat{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 13px 0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--wh);font-size:13.5px;font-weight:600;color:var(--tx);cursor:pointer;max-width:100%}
 .lc-cat .e{font-size:15px;line-height:1}
 .lc-cat .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cb-lk{margin-top:10px;font-size:13px;font-weight:600;color:var(--b6);display:inline-flex;align-items:center;gap:6px}.cb-lk .i{width:16px;height:16px}
+.cb-lst{border:1px solid var(--bl);border-radius:var(--rs);padding:0 12px}
+.cb-r,.fd label.cb-r{display:flex;align-items:center;gap:10px;min-height:46px;margin:0;border-bottom:1px solid var(--bl);font-size:14px;font-weight:500;color:var(--tx);cursor:pointer}
+.cb-r:last-child{border-bottom:0}.cb-r span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cb-r b{font-family:var(--mono);font-weight:600}
+.cb-r input{width:20px;height:20px;accent-color:var(--b6);flex-shrink:0}
+.cb-fx{border:0;padding:0 13px;margin:-4px 0 12px;color:var(--t2);cursor:default}
 .lc-sd{font-family:var(--mono);font-weight:500;font-size:11.5px;color:var(--t3);margin-left:6px}
 .lc-cat:hover{border-color:var(--b5)}
 .lc-cat.on{background:var(--b6);color:#fff;border-color:var(--b6)}
@@ -1315,7 +1321,7 @@ function pgD(m){
   if(fora2>0)frase+=' <span class="hx">Renda do mês: '+fm(t.rendaOperacional)+' (fora extras e empréstimos de '+fm(fora2)+'). Só com ela, '+mes+' fecharia em <strong>'+fm(t.resultadoSemExtras)+'</strong>, sem contar a sobra.</span>';
   else if(t.despesas>t.renda)frase+=' <span class="al">Despesas passam a renda do mês em <strong>'+fm(Fin.r(Fin.c(t.despesas)-Fin.c(t.renda)))+'</strong>'+(cr>0&&s>=0?'; a sobra de '+mAnt+' cobre a diferença.':'.')+'</span>';
   var kc=pct>100?'al':pct>85?'wn':'ok';
-  h+='<section class="hero" aria-label="Resumo de '+mes+'"><div class="hero-top"><div><div class="eyb">Saldo de '+mes+'</div><div class="hero-v'+(s<0?' neg':s===0?' zero':'')+'">'+fm(s)+'</div><p class="hero-s">'+frase+'</p></div>';
+  h+='<section class="hero" aria-label="Resumo de '+mes+'"><div class="hero-top"><div><div class="eyb">Saldo de '+mes+'</div><div class="hero-v'+(s<0?' neg':s===0?' zero':'')+'">'+fm(s)+'</div><p class="hero-s">'+frase+'</p><button class="lk cb-lk" data-acao="conf-banco">'+svg('ok')+'Conferir com o banco</button></div>';
   h+='<div class="hero-k"><div class="kpi"><div class="eyb">Falta pagar</div><span class="kpi-v'+(falta>0?'':' ok')+'">'+fm(falta)+'</span><span class="kpi-s">'+(itens.length?plural(itens.length,'conta'):'Tudo pago')+'</span></div>';
   h+='<div class="kpi"><div class="eyb">Comprometido</div><span class="kpi-v '+kc+'">'+(t.renda>0?pct.toFixed(0)+'%':'—')+'</span><span class="kpi-s">da renda do mês'+(fora2>0&&pctOp>0?' · sem extras '+pctOp.toFixed(0)+'%':'')+'</span></div></div></div>';
   // regua: quanto da renda (com a sobra) vai para despesas, parcelas e o que sobra
@@ -1903,6 +1909,7 @@ function erroCampo(id,msg){
 // Acoes por data-* com um unico ouvinte (nada de dado do usuario dentro de onclick).
 // Captura: roda antes do stopPropagation do modal.
 var ACOES={
+  'conf-banco':function(){abrirConfBanco()},
   'res-mov':function(d){abrirLancReserva(d.mv,d.n||'')},
   dlg:function(d){var f=DLG[Number(d.i)];cmo();if(f)f()},
   qp:function(d,el){qp(d.id,Number(d.m),el)},
@@ -2753,6 +2760,47 @@ function resBtns(){
   return lst.map(function(x,i){return '<button type="button" class="lc-cat'+(LC.cat===x.nome?' on':'')+'" role="option" aria-selected="'+(LC.cat===x.nome)+'" onclick="lcCat(this,'+i+')"><span class="e">'+icRes(x.nome)+'</span><span class="n">'+esc(x.nome)+'<small class="lc-sd">'+fm(x.saldo)+'</small></span></button>'}).join('')+
     '<button type="button" class="lc-cat nova" role="option" aria-selected="false" onclick="lcNovaCat()">'+svg('plus')+'<span class="n">Nova reserva</span></button>';
 }
+// ===== conferir com o banco =====
+// O saldo do mês no app é uma projeção do fim do mês. Pelo banco: o que tem hoje nas contas
+// + o que ainda vai entrar no mês - o que ainda falta pagar. A diferença vira "Diferença do banco"
+// no mês (despesa se o app estava acima do banco, entrada se estava abaixo), e o saldo passa a bater.
+var NOME_DIF='Diferença do banco';
+function faltaPagarC(m){var y=Y(),f=0;
+  for(var mm=0;mm<m;mm++)y.despesas.forEach(function(d){if(stD(d,mm)==='Pendente')f+=Fin.c(d.values[mm]||0)});
+  y.despesas.forEach(function(d){if(emAberto(d,m))f+=Fin.c(d.values[m]||0)});
+  PM(m).forEach(function(p){if(p.status!=='Pago')f+=Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0))});
+  return f}
+function rendasConf(m){return Y().renda.filter(function(r){return (r.values[m]||0)>0&&Fin.normNome(r.name)!==Fin.normNome(NOME_DIF)})}
+function abrirConfBanco(){var m=DB.mo,mes=MN[m].toLowerCase(),rs=rendasConf(m),fp=faltaPagarC(m);
+  om('<h3>Conferir com o banco</h3><p class="ms">O saldo de '+mes+' é o que vai sobrar no fim do mês. Diga quanto tem hoje e o que ainda vai cair; o app acerta a diferença.</p>'+
+  '<div class="fd"><label for="cbV">Quanto tem agora nas contas</label><input type="text" id="cbV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" oninput="cbCalc()"><div class="fd-h">Some todas as contas do casal. Não conte as caixinhas da reserva.</div></div>'+
+  '<div class="fd"><label>Marque o que ainda vai cair na conta até o fim de '+mes+'</label><div class="cb-lst">'+(rs.length?rs.map(function(r,i){return '<label class="cb-r"><input type="checkbox" id="cbR'+i+'" data-v="'+Fin.c(r.values[m])+'" onchange="cbCalc()"><span>'+esc(r.name)+'</span><b>'+fm(r.values[m])+'</b></label>'}).join(''):'<p class="fd-h">Nenhuma entrada prevista em '+mes+'.</p>')+'</div></div>'+
+  '<div class="cb-r cb-fx"><span>Ainda falta pagar em '+mes+'</span><b>- '+fm(Fin.r(fp))+'</b></div>'+
+  '<div class="ins" id="cbRes" role="status"><span class="em">'+svg('info')+'</span>Digite o valor que tem nas contas.</div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" id="cbOk" onclick="salvarConfBanco()" disabled>Ajustar o app</button></div>');
+  setTimeout(function(){var e=document.getElementById('cbV');if(e)e.focus()},mob()?60:140)}
+// devolve centavos: fim do mês pelo banco, saldo do app e a diferença
+function cbConta(){var m=DB.mo,v=lerValor((document.getElementById('cbV')||{}).value);if(v===null)return null;
+  var ent=0,bx=document.querySelectorAll('.cb-lst input[type=checkbox]');for(var i=0;i<bx.length;i++)if(bx[i].checked)ent+=Number(bx[i].getAttribute('data-v'))||0;
+  var fim=Fin.c(v)+ent-faltaPagarC(m),app=Fin.c(T(m).saldo);return {fim:fim,app:app,dif:fim-app}}
+function cbCalc(){var r=cbConta(),box=document.getElementById('cbRes'),b=document.getElementById('cbOk'),mes=MN[DB.mo].toLowerCase();if(!box)return;
+  if(!r){box.innerHTML='<span class="em">'+svg('info')+'</span>Digite o valor que tem nas contas.';b.disabled=true;return}
+  var t='Pelo banco, '+mes+' fecha em <strong>'+fm(Fin.r(r.fim))+'</strong>. O app mostra '+fm(Fin.r(r.app))+'.';
+  if(Math.abs(r.dif)<1){t+=' Já está batendo.';b.disabled=true;b.textContent='Ajustar o app'}
+  else{t+=r.dif<0?' Faltam '+fm(Fin.r(-r.dif))+' que saíram e não foram lançados.':' Tem '+fm(Fin.r(r.dif))+' a mais que o app.';b.disabled=false;b.textContent=(r.dif<0?'Lançar diferença de - ':'Lançar diferença de + ')+fm(Fin.r(Math.abs(r.dif)))}
+  box.innerHTML='<span class="em">'+svg(r.dif<0?'info':'ok')+'</span>'+t}
+function salvarConfBanco(){var r=cbConta(),m=DB.mo;if(!r){erroCampo('cbV','Informe quanto tem nas contas (ex.: 2.031,60).');return}
+  if(Math.abs(r.dif)<1){cmo();return}
+  var y=Y(),n=Fin.normNome(NOME_DIF),d=null,e=null;
+  y.despesas.forEach(function(x){if(!d&&Fin.normNome(x.name)===n)d=x});y.renda.forEach(function(x){if(!e&&Fin.normNome(x.name)===n)e=x});
+  if(!d){d={id:novoId('d'),name:NOME_DIF,venc:'',tipo:'variavel',values:z12(),status:s12()};y.despesas.push(d)}
+  if(!e){e={id:novoId('r'),name:NOME_DIF,tipo:'variavel',values:z12()};y.renda.push(e)}
+  var dA=d.values[m]||0,eA=e.values[m]||0,sA=d.status[m]||'',liq=Fin.c(eA)-Fin.c(dA)+r.dif;
+  e.values[m]=liq>0?Fin.r(liq):0;d.values[m]=liq<0?Fin.r(-liq):0;d.status[m]=liq<0?'Pago':'';
+  try{Fin.marcar(DB,'rendaExtra',NOME_DIF,true)}catch(x){}
+  cmo();
+  toast('Saldo de '+MN[m].toLowerCase()+' acertado com o banco',function(){d.values[m]=dA;e.values[m]=eA;d.status[m]=sA;toast('Desfeito');R()});
+  R()}
 // ícone da reserva pelo nome (o gi() geral classifica como despesa e cai no alfinete)
 function icRes(n){var t=semAcento(n);if(/viag|ferias/.test(t))return '✈️';if(/poupan/.test(t))return '🐷';if(/casa|reforma|movel/.test(t))return '🏠';if(/carro|moto/.test(t))return '🚗';if(/presente|natal/.test(t))return '🎁';if(/estud|curso|facul/.test(t))return '🎓';return '🛡️'}
 function lcMov(el,t){LC.rm=t;var b=el.parentElement.querySelectorAll('.tgl-o');for(var i=0;i<b.length;i++){b[i].classList.remove('on');b[i].setAttribute('aria-pressed','false')}el.classList.add('on');el.setAttribute('aria-pressed','true');lcBotao()}
