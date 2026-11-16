@@ -1212,7 +1212,7 @@ function secaoDesp(d){var k=Fin.cartaoDespesa(DB,d);if(k)return 'c:'+k;if(dimDe(
 function secaoParc(p){var dv=acharDiv(p.dvId),k=dv?Fin.cartaoDivida(DB,dv):null;return k?'c:'+k:'divida'}
 function secoesDef(){var l=[{k:'rec',t:'Contas recorrentes',s:'Fixas, variáveis e assinaturas'}];
   CARTOES.forEach(function(c){l.push({k:'c:'+c.k,t:'Cartão '+c.n,s:'Fatura',c:c})});
-  l.push({k:'cg',t:'Gastos no cartão por categoria',s:'As compras de cada uma estão na fatura do cartão'});
+  l.push({k:'cg',t:'Previsto no cartão (ainda sem compra)',s:'Previsão da categoria que ainda não virou compra'});
   l.push({k:'divida',t:'Outras dívidas',s:'Empréstimos, financiamentos e outras lojas'});return l}
 function rotuloClasse(d){var c=classeD(d);return c==='assinatura'?'Assinatura':c==='divida'?'Dívida':d.tipo==='fixa'?'Fixa':'Variável'}
 function ativoDesde(it,m){return Fin.ativoDesde(it,m)}
@@ -1301,12 +1301,18 @@ function lancsDaLinha(nome,m){var n=Fin.normNome(nome),ls=lancDoMes(DB.curYear,m
   ls.sort(function(a,b){return String(a.data).localeCompare(String(b.data))});var t=0;ls.forEach(function(l){t+=Fin.c(l.valor)});
   return '<div class="fd"><label>Lançamentos de '+MN[m].toLowerCase()+' · '+fm(Fin.r(t))+'</label><ul class="lst lc-det">'+ls.map(function(l){var dd=String(l.data||'').split('-');
     return '<li class="row"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(l.id)+'"><span class="row-tx"><span class="row-t">'+esc(l.obs||nome)+'</span><span class="row-s">'+formaLanc(l)+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+'</span></span><span class="row-v">'+fm(l.valor)+'</span></button></li>'}).join('')+'</ul></div>'}
+// compras no crédito do ano, por cartão (cada compra é uma linha na seção do cartão)
+function comprasCartaoAno(ck){var out=[];lancTodos().forEach(function(l){if(String(l.ano)!==String(DB.curYear)||String(l.tipo||'despesa')!=='despesa'||String(l.origem||'')!=='credito:'+ck)return;out.push(l)});
+  out.sort(function(a,b){return (Number(a.mes)-Number(b.mes))||String(a.data).localeCompare(String(b.data))});return out}
+function descLanc(l){return String(l.obs||l.categoria||'').replace(/\s*·\s*compra em \d\d\/\d\d$/,'')||l.categoria}
+// centavos lançados no crédito por mês, numa linha (para não repetir na linha da categoria)
+function credPorMes(nome){var n=Fin.normNome(nome),a=[0,0,0,0,0,0,0,0,0,0,0,0];lancTodos().forEach(function(l){if(String(l.ano)!==String(DB.curYear)||Fin.normNome(l.categoria)!==n||!/^credito:/.test(String(l.origem||'')))return;a[Number(l.mes)]+=Fin.c(l.valor)});return a}
 function lancForma(nome,m){var n=Fin.normNome(nome),o={cred:0,outros:0,cart:{}};lancDoMes(DB.curYear,m,'despesa').forEach(function(l){if(Fin.normNome(l.categoria)!==n)return;var vc=Fin.c(l.valor),og=String(l.origem||'');if(/^credito:/.test(og)){o.cred+=vc;var k=og.split(':')[1];o.cart[k]=(o.cart[k]||0)+vc}else o.outros+=vc});return o}
 function linhaCG(d,m){var v=Fin.c(d.values[m]||0),lf=lancForma(d.name,m),sub=[];
   CARTOES.forEach(function(c){if(lf.cart[c.k])sub.push(c.n+' '+fm(Fin.r(lf.cart[c.k])))});
   if(lf.outros)sub.push('Pix/débito '+fm(Fin.r(lf.outros)));
-  var resto=v-lf.cred-lf.outros;if(resto>0)sub.push((lf.cred+lf.outros?'falta lançar ':'previsto ')+fm(Fin.r(resto)));
-  return '<li class="row"><button class="row-main" data-acao="edc" data-tipo="despesas" data-id="'+esc(d.id)+'" data-m="'+m+'"><span class="ic">'+giD(d)+'</span><span class="row-tx"><span class="row-t">'+esc(d.name)+'</span><span class="row-s">'+(sub.join(' · ')||'Sem compras no mês')+'</span></span><span class="row-v">'+fm(Fin.r(Math.max(v,lf.cred+lf.outros)))+'</span></button></li>'}
+  var resto=v-lf.cred-lf.outros;sub=[];if(lf.cred)sub.push('já no cartão '+fm(Fin.r(lf.cred)));sub.push('previsto '+fm(Fin.r(v)));
+  return '<li class="row"><button class="row-main" data-acao="edc" data-tipo="despesas" data-id="'+esc(d.id)+'" data-m="'+m+'"><span class="ic">'+giD(d)+'</span><span class="row-tx"><span class="row-t">'+esc(d.name)+'</span><span class="row-s">'+(sub.join(' · ')||'Sem compras no mês')+'</span></span><span class="row-v">'+fm(Fin.r(Math.max(0,resto)))+'</span></button></li>'}
 function gastoLancado(nome,m){var n=Fin.normNome(nome),t=0,q=0;lancDoMes(DB.curYear,m,'despesa').forEach(function(l){if(Fin.normNome(l.categoria)===n){t+=Fin.c(l.valor);q++}});return {v:Fin.r(t),n:q}}
 function linhaDesp(d,m,o){
   o=o||{};var st=stD(d,m),v=d.values[m]||0,ic=[giD(d)],pend=st==='Pendente'||(st===''&&v>0),sub=[],vt=vencTxt(d.venc);
@@ -1396,18 +1402,24 @@ function pgP(m){
   h+='<div class="tc"><div class="ts"><table class="t yt"><thead><tr><th class="cn">Conta</th><th>Tipo</th><th>Venc.</th>';
   for(var i=0;i<12;i++)h+='<th class="c '+(i===m?'mhh':'')+'">'+SH[i]+'</th>';
   h+='<th class="r tt">Total</th></tr></thead><tbody>';
-  function linha(d2){var tot=0,ic=[giD(d2)],et=encTxt(d2)||(ativoDesde(d2,m)?'':'Sem valor de '+MN[m].toLowerCase()+' em diante');d2.values.forEach(function(v){tot+=Fin.c(v||0)});var r='<tr class="lin-ed'+(ativoDesde(d2,m)?'':' enc')+'" data-acao="edc" data-tipo="despesas" data-id="'+esc(d2.id)+'" data-m="'+m+'"><td class="cn"><div class="nm" data-acao="eU" data-id="'+esc(d2.id)+'" data-m="'+m+'" role="button" tabindex="0" style="cursor:pointer"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+(et?'<small class="enc-t">'+esc(et)+'</small>':'')+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
-    for(var i=0;i<12;i++){var v=d2.values[i],st=stD(d2,i),cs=celStatus(st,v,Fin.ym(DB.curYear,i)>hojeYM());r+='<td class="c '+(i===m?'mhi':'')+'"><button class="st '+cs[0]+'" data-acao="'+(st==='Pendente'?'qp':'eU')+'" data-id="'+esc(d2.id)+'" data-m="'+i+'" data-flash="d|'+esc(d2.id)+'|'+i+'"'+(st==='Pendente'?' title="Pendente: toque para marcar como pago"':'')+'>'+cs[1]+'</button></td>'}
+  function linha(d2,sub){var vv=function(i){return sub?Fin.r(Math.max(0,Fin.c(d2.values[i]||0)-sub[i])):d2.values[i]},tot=0,ic=[giD(d2)],et=encTxt(d2)||(ativoDesde(d2,m)?'':'Sem valor de '+MN[m].toLowerCase()+' em diante');for(var q0=0;q0<12;q0++)tot+=Fin.c(vv(q0)||0);var r='<tr class="lin-ed'+(ativoDesde(d2,m)?'':' enc')+'" data-acao="edc" data-tipo="despesas" data-id="'+esc(d2.id)+'" data-m="'+m+'"><td class="cn"><div class="nm" data-acao="eU" data-id="'+esc(d2.id)+'" data-m="'+m+'" role="button" tabindex="0" style="cursor:pointer"><span class="ic">'+ic[0]+'</span><span>'+esc(d2.name)+(et?'<small class="enc-t">'+esc(et)+'</small>':'')+'</span></div></td><td><span class="tp '+(d2.tipo==='fixa'?'tp-f':'tp-v')+'">'+(d2.tipo==='fixa'?'Fixa':'Var.')+'</span></td><td class="vc">'+esc(vencTxt(d2.venc)||'—')+'</td>';
+    for(var i=0;i<12;i++){var v=vv(i),st=stD(d2,i),cs=celStatus(st,v,Fin.ym(DB.curYear,i)>hojeYM());r+='<td class="c '+(i===m?'mhi':'')+'"><button class="st '+cs[0]+'" data-acao="'+(st==='Pendente'?'qp':'eU')+'" data-id="'+esc(d2.id)+'" data-m="'+i+'" data-flash="d|'+esc(d2.id)+'|'+i+'"'+(st==='Pendente'?' title="Pendente: toque para marcar como pago"':'')+'>'+cs[1]+'</button></td>'}
     return r+'<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'}
   var fora=[],foraP=[],porSec={},parc=DB.fD!=='variavel'?parcelasDoAno():[];
-  Y().despesas.forEach(function(d2){if(!passa(refD(d2)))return;if(!d2.values.some(function(v){return v>0}))return;if(visD(d2,m)==='historico'){fora.push(d2);return}var k=secaoDesp(d2);(porSec[k]=porSec[k]||{d:[],p:[]}).d.push(d2)});
+  var subD={};
+  Y().despesas.forEach(function(d2){if(!passa(refD(d2)))return;if(!d2.values.some(function(v){return v>0}))return;if(visD(d2,m)==='historico'){fora.push(d2);return}var k=secaoDesp(d2),cpm=credPorMes(d2.name);
+    if(cpm.some(function(x){return x>0})){subD[d2.id]=cpm;if(!d2.values.some(function(v,i){return Fin.c(v||0)-cpm[i]>0}))return}
+    (porSec[k]=porSec[k]||{d:[],p:[]}).d.push(d2)});
   parc.forEach(function(g){var dvq=acharDiv(g.dvId);if(dvq&&!passa(refV(dvq)))return;if(!parcAtivaDesde(g,m)||(dvq&&visV(dvq,m)==='historico')){foraP.push(g);return}var k=secaoParc(g);(porSec[k]=porSec[k]||{d:[],p:[]}).p.push(g)});
   function linhaP(g){var tot=0,dvg=acharDiv(g.dvId),ic=dvg?[giDiv(dvg)]:gi(nomeParc(g.name)),r='<tr class="dv-linha lin-ed'+(parcAtivaDesde(g,m)?'':' enc')+'" data-acao="dv-edit" data-dv="'+esc(g.dvId)+'"><td class="cn"><div class="nm"><span class="ic">'+ic[0]+'</span><span>'+esc(nomeParc(g.name))+'</span></div></td><td>'+tagDiv()+'</td><td class="vc">'+esc(vencTxt(g.venc)||'—')+'</td>';
     for(var i=0;i<12;i++){var p=g.meses[i];if(!p){r+='<td class="c '+(i===m?'mhi':'')+'"><span class="cv ze">—</span></td>';continue}tot+=Fin.c(p.valor||0);var cs=celStatus(p.status,p.valor,Fin.ym(DB.curYear,i)>hojeYM());r+='<td class="c '+(i===m?'mhi':'')+'">'+btnParcela(p,Fin.ym(DB.curYear,i),cs[0],cs[1])+'</td>'}
     return r+'<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td></tr>'}
-  secoesDef().forEach(function(sd){var b=porSec[sd.k];if(!b)return;
+  function linhaCompra(l,c){var mi=Number(l.mes),dd=String(l.data||'').split('-'),r='<tr class="lin-ed" data-acao="lanc-ed" data-id="'+esc(l.id)+'"><td class="cn"><div class="nm"><span class="ic">'+gi(l.categoria)[0]+'</span><span>'+esc(descLanc(l))+'<small class="enc-t">'+esc(l.categoria)+'</small></span></div></td><td><span class="tp tp-v">1x</span></td><td class="vc">'+(dd.length===3?dd[2]+'/'+dd[1]:'—')+'</td>';
+    for(var i=0;i<12;i++)r+='<td class="c '+(i===m?'mhi':'')+'">'+(i===mi?'<span class="cv">'+fm(l.valor)+'</span>':'<span class="cv ze">—</span>')+'</td>';
+    return r+'<td class="r tt"><span class="cv b">'+fm(l.valor)+'</span></td></tr>'}
+  secoesDef().forEach(function(sd){var b=porSec[sd.k]||{d:[],p:[]},cps=(sd.c&&DB.fD!=='variavel')?comprasCartaoAno(sd.c.k):[];if(!b.d.length&&!b.p.length&&!cps.length)return;
     h+='<tr class="sep"><td colspan="16"><span class="sep-l">'+(sd.c?'<span class="sep-s">'+selo(sd.c,18)+'</span>':'')+sd.t+'</span></td></tr>';
-    b.d.forEach(function(d2){h+=linha(d2)});b.p.forEach(function(g){h+=linhaP(g)})});
+    b.d.forEach(function(d2){h+=linha(d2,subD[d2.id])});b.p.forEach(function(g){h+=linhaP(g)});cps.forEach(function(l){h+=linhaCompra(l,sd.c)})});
   var nF=fora.length+foraP.length;
   if(nF){h+='<tr class="sep fora"><td colspan="16"><span class="sep-l"><button class="lk" onclick="UI.verEnc=!UI.verEnc;R()">'+svg(UI.verEnc?'down':'chev')+' Quitadas, encerradas e sem cobrança: '+plural(nF,'item','itens')+'</button><span class="fora-s">Continuam no cálculo do ano.</span></span></td></tr>';
     if(UI.verEnc){fora.forEach(function(d2){h+=linha(d2)});foraP.forEach(function(g){h+=linhaP(g)})}}
@@ -1421,8 +1433,8 @@ function pgPMes(m){
     if(sc.indexOf('c:')===0)return;                       // gasto do cartão entra na fatura
     if(!(v>0))return;                                      // sem valor no mês: não aparece
     var lf=lancForma(d.name,m);
-    if(sc==='cg'&&visD(d,m)!=='historico'&&st!=='N/A'){cg.push(d);var ef=Math.max(Fin.c(v),lf.cred+lf.outros)-lf.cred;cgT+=ef;if(st==='Pago')pago+=ef;else{pago+=lf.outros;falta+=Math.max(0,Fin.c(v)-lf.cred-lf.outros)}return}
-    if(lf.cred)v=Fin.r(Math.max(0,Fin.c(v)-lf.cred));       // o que foi no crédito já está na fatura
+    if(sc==='cg'&&visD(d,m)!=='historico'&&st!=='N/A'){if(Fin.c(v)-lf.cred-lf.outros>0)cg.push(d);var ef=Math.max(Fin.c(v),lf.cred+lf.outros)-lf.cred;cgT+=ef;if(st==='Pago')pago+=ef;else{pago+=lf.outros;falta+=Math.max(0,Fin.c(v)-lf.cred-lf.outros)}return}
+    if(lf.cred){v=Fin.r(Math.max(0,Fin.c(v)-lf.cred));if(!(v>0))return}   // o que foi no crédito já está na fatura
     if(visD(d,m)==='historico'||st==='N/A'){fora.push(d);if(st!=='N/A'){foraT+=Fin.c(v);if(st==='Pago')pago+=Fin.c(v);else falta+=Fin.c(v)}return}
     var g=sc==='divida'?div:rec,it={h:linhaDesp(d,m,{tipo:1}),dia:diaVenc(d.venc)};g.tot+=Fin.c(v);
     if(st==='Pago'){g.pag.push(it);pago+=Fin.c(v)}else{g.abe.push(it);g.n++;falta+=Fin.c(v)}});
@@ -1444,7 +1456,7 @@ function pgPMes(m){
   if(!rec.abe.length&&!rec.pag.length&&!div.abe.length&&!div.pag.length&&!fats.length&&!cg.length)h+='<section class="card"><div class="vazio">'+svg('cal')+'<b>Nada planejado em '+mes+'</b>Nenhuma conta com valor neste mês.</div></section>';
   h+=secao('sec-rec','Contas recorrentes','Fixas, variáveis e assinaturas',rec);
   h+=htmlFaturas(fats,m,'Cartões e compras','Uma fatura por cartão. Compras do ⚡ "Crédito" entram aqui.');
-  if(cg.length)h+='<section class="card sec" id="sec-cg"><div class="card-h"><div><h2>Gastos no cartão por categoria</h2><div class="sec-s">Quanto foi em cada grupo. As compras estão na fatura de cada cartão.</div></div></div><ul class="lst">'+cg.map(function(d){return linhaCG(d,m)}).join('')+'</ul></section>';
+  if(cg.length)h+='<section class="card sec" id="sec-cg"><div class="card-h"><div><h2>Previsto no cartão</h2><div class="sec-s">Previsão que ainda não virou compra. As compras estão na fatura de cada cartão.</div></div></div><ul class="lst">'+cg.map(function(d){return linhaCG(d,m)}).join('')+'</ul></section>';
   h+=secao('sec-div','Outras dívidas','Empréstimos, financiamentos e outras lojas',div);
   if(fora.length+foraP.length)h+='<section class="card fora-m">'+grp('p-fora','Quitadas e encerradas em '+mes,plural(fora.length+foraP.length,'item','itens'),function(){return '<p class="fd-h" style="margin:0;padding:10px 18px 0">Continuam no cálculo do mês e do ano. <button class="lk" onclick="UI.divAba=\'pa\';UI.abertos[\'dv-quitada\']=1;gp(\'dividas\')">Ver todas as dívidas quitadas</button></p><ul class="lst">'+foraP.map(function(p){return linhaParc(p,ym)}).join('')+fora.map(function(d){return linhaDesp(d,m,{enc:encNoMes(d,m),tipo:!encNoMes(d,m)})}).join('')+'</ul>'})+'</section>';
   h+='</div>';
@@ -1457,7 +1469,7 @@ function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.l
       h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button> <button class="lk" data-acao="fat-desc" data-k="'+c.k+'">Com desconto</button>')+' <button class="lk" data-acao="fat-conf" data-k="'+c.k+'">Conferir com o banco</button></div>';
       h+=grp('fat-'+c.k,'Ver '+plural(f.itens.length,'compra','compras')+(nAb&&!paga?' · '+nAb+' em aberto':''),'',function(){return '<ul class="lst">'+f.itens.map(function(i){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
-        if(i.tipo==='lanc'){var dd=String(i.data||'').split('-');return '<li class="row"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(i.name||i.grupo)+'</span><span class="row-s">'+esc(i.grupo)+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>'}
+        if(i.tipo==='lanc'){var dd=String(i.data||'').split('-');return '<li class="row"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(String(i.name||i.grupo).replace(/\s*·\s*compra em \d\d\/\d\d$/,''))+'</span><span class="row-s">'+esc(i.grupo)+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>'}
         var d=achar('despesas',i.id);return d?linhaDesp(d,m,{}):''}).join('')+'</ul>'});
       h+='</div>'});
     return h+'</section>'}
@@ -2628,7 +2640,7 @@ function editarLanc(id){var l=null;lancTodos().forEach(function(x){if(String(x.i
   om('<h3>Editar lançamento</h3><p class="ms">'+esc(l.categoria)+' · '+(desp?'gasto':'entrada')+'</p>'+
     '<div class="fd"><label for="elV">Valor</label><input type="text" id="elV" class="lc-val" value="'+vIn(l.valor)+'" inputmode="decimal" autocomplete="off"></div>'+
     '<div class="fd"><label for="elC">Categoria</label><select id="elC" class="inp">'+(function(){var ls=(desp?Y().despesas:Y().renda).map(function(x){return x.name}),vis={},h='';if(ls.indexOf(l.categoria)<0)ls.unshift(l.categoria);ls.forEach(function(n){if(vis[n])return;vis[n]=1;h+='<option'+(n===l.categoria?' selected':'')+'>'+esc(n)+'</option>'});return h})()+'</select></div>'+
-    (desp?'<div class="fd"><label>Pago com</label>'+chipsCartao(LC.cartao,true)+'</div>':'')+
+    (desp?'<div class="fd"><label>Pago com</label>'+chipsCartao(LC.cartao,true)+'</div><div class="fd"><label>No cartão, foi</label>'+tglGrupo('elF',/^credito:/.test(String(l.origem||''))?'credito':'debito',[['debito','Débito'],['credito','Crédito (vai para a fatura)']])+'<div class="fd-h">Vale quando o pagamento foi num cartão.</div></div>':'')+
     '<div class="fd-row"><div class="fd"><label for="elD">Data</label><input type="date" id="elD" value="'+esc(l.data)+'"></div><div class="fd"><label for="elO">Observação</label><input type="text" id="elO" value="'+esc(l.obs||'')+'"></div></div>'+
     '<div class="mac"><button class="btn btn-g" data-acao="lanc-del" data-id="'+esc(String(l.id))+'">'+svg('trash')+'Excluir</button><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="sEditarLanc()">Salvar</button></div>');
 }
@@ -2637,7 +2649,7 @@ function sEditarLanc(){var id=EDIT&&EDIT.lanc,l=null;lancTodos().forEach(functio
   var dt=document.getElementById('elD').value,p=dt.split('-');if(p.length!==3){erroCampo('elD','Data inválida.');return}
   var catN=(document.getElementById('elC')||{}).value||l.categoria;
   var novo={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,tipo:l.tipo,categoria:catN,valor:v,
-    obs:(document.getElementById('elO').value||'').trim(),origem:'app'+(String(l.tipo||'despesa')!=='renda'&&cartaoDe(LC.cartao)?':'+LC.cartao:'')};
+    obs:(document.getElementById('elO').value||'').trim(),origem:(String(l.tipo||'despesa')!=='renda'&&cartaoDe(LC.cartao))?(((document.getElementById('elF')||{}).value==='credito'?'credito:':'app:')+LC.cartao):'app'};
   var estavaNaFila=naFila(l.id);
   lancNoPlano(l,-1);
   DB.lancamentos=(DB.lancamentos||[]).filter(function(x){return String(x.id)!==id});tirarDaFila(id);
