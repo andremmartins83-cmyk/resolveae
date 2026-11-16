@@ -123,6 +123,7 @@
   //  1) pagamento da própria competência (até o valor da parcela);
   //  2) pagoInicial cobre as primeiras parcelas em aberto (pago antes do plano / fora do app);
   //  3) excedentes (amortização acima da parcela e pagamentos fora do plano) cobrem as últimas.
+  // Desconto (parcela antecipada paga por menos): cobre a parcela junto com o pago, não sai do caixa.
   function analisar(dv) {
     var plano = Fin.planoParcelas(dv);
     var pagC = {}, ks = Object.keys((dv && dv.pagamentos) || {}), i;
@@ -134,13 +135,16 @@
       somaPagC += vc;
       if (vc > 0 && (ultimoPag === null || ks[i] > ultimoPag)) ultimoPag = ks[i];
     }
+    var descC = descontosC(dv), somaDescC = 0;
     var noPlano = {}, excesso = 0, ps = [];
     for (i = 0; i < plano.length; i++) {
-      var p = plano[i], valC = c(p.valor), mesC = pagC[p.ym] || 0;
+      var p = plano[i], valC = c(p.valor), mesC = pagC[p.ym] || 0, dC = descC[p.ym] || 0;
       noPlano[p.ym] = true;
-      var own = Math.max(0, Math.min(mesC, valC));
-      if (mesC > valC) excesso += mesC - valC;
-      ps.push({ k: p.k, ym: p.ym, valorC: valC, pagoMesC: mesC, cobertoC: own });
+      somaDescC += dC;
+      var own = Math.max(0, Math.min(mesC + dC, valC));
+      var devidoC = Math.max(0, valC - dC);
+      if (mesC > devidoC) excesso += mesC - devidoC;
+      ps.push({ k: p.k, ym: p.ym, valorC: valC, pagoMesC: mesC, descontoC: dC, cobertoC: own });
     }
     for (i = 0; i < ks.length; i++) if (pagC[ks[i]] && !noPlano[ks[i]]) excesso += pagC[ks[i]];
     var ini = Math.max(0, c(dv && dv.pagoInicial));
@@ -154,7 +158,7 @@
     }
     var totalPagoC = c(dv && dv.pagoInicial) + somaPagC;
     var totalC = c(dv && dv.total);
-    var saldoC = Math.max(0, totalC - totalPagoC);
+    var saldoC = Math.max(0, totalC - totalPagoC - somaDescC);
     var incons = inconsistenciasDiv(dv || {}, totalPagoC);
     var todasPagas = ps.length > 0 && ps.every(function (x) { return x.cobertoC >= x.valorC - TOL; });
     // Com 'total ≠ parcela × qtd' o total digitado não é confiável: vale só o critério das parcelas
@@ -187,8 +191,10 @@
     else if (a.quitada) status = 'quitada';
     else if (atrasadas > 0) status = 'atrasada';
     else status = 'em-dia';
+    var descTotC = 0;
+    for (i = 0; i < a.parcelas.length; i++) descTotC += a.parcelas[i].descontoC || 0;
     return {
-      totalPago: r(a.totalPagoC), saldo: quit ? 0 : r(a.saldoC), quitada: a.quitada || !!quit, status: status,
+      totalPago: r(a.totalPagoC), totalDesconto: r(descTotC), saldo: quit ? 0 : r(a.saldoC), quitada: a.quitada || !!quit, status: status,
       quitacao: quit ? { ym: quit.ym, valor: quit.valor, desconto: r(a.saldoC) } : null,
       pagas: quit ? a.parcelas.length : pagas, restantes: quit ? 0 : a.parcelas.length - pagas, proxima: dv.situacao === 'radar' ? null : proxima,
       fimPrevisto: dv.situacao === 'radar' ? null : fim, atrasadas: atrasadas,
@@ -211,12 +217,15 @@
         if (mesC <= 0) continue;
         linha.k = p ? p.k : null; linha.qtd = a.parcelas.length; if (!p) linha.avulso = true;
         linha.valor = r(mesC); linha.pago = r(mesC); linha.status = 'Pago';
+        if (p && p.descontoC > 0) linha.desconto = r(p.descontoC);
       } else if (p) {
         // Quitada: não gera parcela depois do último pagamento (quitou antes, por amortização ou fora do app).
         if (a.quitada && mesC <= 0 && (a.ultimoPag === null || alvo > a.ultimoPag)) continue;
         linha.k = p.k; linha.qtd = a.parcelas.length;
-        linha.valor = r(Math.max(p.valorC, mesC));
+        // com desconto, a parcela do mês vale o que saiu do caixa (parcela − desconto)
+        linha.valor = r(Math.max(p.valorC - p.descontoC, mesC));
         linha.pago = r(mesC);
+        if (p.descontoC > 0) linha.desconto = r(p.descontoC);
         linha.status = (a.quitada || p.cobertoC >= p.valorC - TOL) ? 'Pago' : (p.cobertoC > 0 ? 'Parcial' : 'Pendente');
       } else if (mesC > 0) {
         // pagamento fora do plano (amortização avulsa): é saída de caixa daquele mês
@@ -249,7 +258,47 @@
   };
   Fin.desfazerPagamento = function (dv, alvo) {
     if (dv.pagamentos) delete dv.pagamentos[alvo];
+    tirarDesconto(dv, alvo);
     return dv;
+  };
+
+  // Desconto de parcela (pagou antes e o banco abateu juros): marca em flags 'desconto|AAAA-MM|valor'
+  // porque a planilha não aceita campo novo. O desconto cobre a parcela, mas não sai do caixa.
+  var DESC = 'desconto|';
+  function descontosC(dv) {
+    var out = {}, fs = (dv && Array.isArray(dv.flags)) ? dv.flags : [];
+    for (var i = 0; i < fs.length; i++) {
+      var f = String(fs[i]);
+      if (f.indexOf(DESC) !== 0) continue;
+      var p = f.split('|'), vc = c(Number(p[2]) || 0);
+      if (ymParse(p[1]) && vc > 0) out[p[1]] = (out[p[1]] || 0) + vc;
+    }
+    return out;
+  }
+  function tirarDesconto(dv, alvo) {
+    if (!dv || !Array.isArray(dv.flags)) return;
+    dv.flags = dv.flags.filter(function (f) { return String(f).indexOf(DESC + alvo + '|') !== 0; });
+  }
+  Fin.descontoDe = function (dv, alvo) { return r(descontosC(dv)[alvo] || 0); };
+  // Paga a parcela do mês por um valor menor que o que falta; a diferença vira desconto.
+  // Devolve {pago, desconto} (em reais) ou lança erro.
+  Fin.pagarComDesconto = function (dv, alvo, valorPago) {
+    if (!ymParse(alvo)) throw new Error('Competência inválida: ' + alvo);
+    var valP = parcelaDoPlano(dv, alvo);
+    if (valP === null) throw new Error('Não há parcela de ' + ymRotulo(alvo) + ' no plano.');
+    var vC0 = c(valorPago);
+    if (!(vC0 > 0)) throw new Error('Informe o valor que você pagou.');
+    if (!dv.pagamentos || typeof dv.pagamentos !== 'object') dv.pagamentos = {};
+    var pagoAntC = Math.max(0, c(dv.pagamentos[alvo])), descAntC = descontosC(dv)[alvo] || 0;
+    var faltaC = c(valP) - pagoAntC - descAntC;
+    if (faltaC <= 0) throw new Error('Esta parcela já está paga.');
+    if (vC0 >= faltaC) throw new Error('O valor pago não é menor que o da parcela (' + fmt(r(faltaC)) + '): use Pagar.');
+    var novoDescC = descAntC + faltaC - vC0;
+    dv.pagamentos[alvo] = r(pagoAntC + vC0);
+    tirarDesconto(dv, alvo);
+    if (!Array.isArray(dv.flags)) dv.flags = [];
+    dv.flags.push(DESC + alvo + '|' + r(novoDescC));
+    return { pago: r(vC0), desconto: r(faltaC - vC0) };
   };
   Fin.amortizar = function (dv, alvo, valor) {
     if (!ymParse(alvo)) throw new Error('Competência inválida: ' + alvo);
@@ -363,7 +412,9 @@
       }
       var linhas = linhasDoMes(DB, ym(k, m), cache), parcC = 0;
       for (i = 0; i < linhas.length; i++) { parcC += c(linhas[i].valor); if (linhas[i].status !== 'Pago') pend++; }
-      var totDespC = despC + parcC;
+      // desconto de fatura antecipada: a fatura saiu do caixa por menos que a soma dos itens
+      var descFatC = descFaturaMesC(raw, ym(k, m));
+      var totDespC = despC + parcC - descFatC;
       // o que vai para a reserva sai da sobra disponível; o resgate volta para ela
       var saldoC = rendaC + sobraC - totDespC - resC;
       var operC = rendaC - extraC - finC;
@@ -371,7 +422,7 @@
         renda: r(rendaC), rendaExtra: r(extraC), rendaFinanc: r(finC),
         rendaOperacional: r(operC), rendaRegular: r(operC),
         resultado: r(rendaC - totDespC), resultadoSemExtras: r(operC - totDespC),
-        despProprias: r(despC), parcelas: r(parcC), despesas: r(totDespC),
+        despProprias: r(despC), parcelas: r(parcC), descontoFatura: r(descFatC), despesas: r(totDespC),
         reserva: r(resC), sobraAnterior: r(sobraC), saldo: r(saldoC),
         comprometimento: rendaC > 0 ? Math.round(totDespC / rendaC * 10000) / 10000 : 0,
         comprometimentoDividas: rendaC > 0 ? Math.round(parcC / rendaC * 10000) / 10000 : 0,
@@ -1125,14 +1176,41 @@
       totC += valC;
       if (st === 'Pago') pagoC += valC;
     });
-    return { itens: itens, total: r(totC), pago: r(pagoC), falta: r(Math.max(0, totC - pagoC)) };
+    // pago = o que saiu do caixa (itens quitados − desconto da fatura antecipada)
+    var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
+    return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
   };
+  // Desconto de fatura: config 'descontosFatura' = { '<cartao>|AAAA-MM': valor }.
+  function descFaturaMapa(raw) { return objOuVazio(raw && raw.descontosFatura); }
+  function descFaturaC(raw, cartaoKey, alvo) { return Math.max(0, c(descFaturaMapa(raw)[cartaoKey + '|' + alvo])); }
+  function descFaturaMesC(raw, alvo) {
+    var mp = descFaturaMapa(raw), t = 0, suf = '|' + alvo;
+    Object.keys(mp).forEach(function (k) { if (k.slice(-suf.length) === suf) t += Math.max(0, c(mp[k])); });
+    return t;
+  }
+  function gravarDescFatura(DB, chave, valor) {
+    var mp = clone(descFaturaMapa(cfgDadosRO(DB)));
+    if (valor === null || valor === undefined || c(valor) <= 0) delete mp[chave]; else mp[chave] = r(c(valor));
+    Fin.setConfig(DB, { descontosFatura: mp });
+  }
   // Paga a fatura inteira do mês (muta DB). Parcela em aberto recebe pagamentos[ym] = valor da linha
   // (a linha continua com o mesmo valor: não há dupla contagem); despesa do cartão vira 'Pago'.
   // Devolve o token para desfazerFatura.
-  Fin.pagarFatura = function (DB, ano, mes0, cartaoKey) {
+  // valorPago (opcional): fatura antecipada paga por menos que o que falta; a diferença vira desconto.
+  Fin.pagarFatura = function (DB, ano, mes0, cartaoKey, valorPago) {
     var tok = { parc: [], desp: [] }, alvo = ym(ano, mes0), raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw);
     if (!cartaoKey) return tok;
+    if (valorPago !== undefined && valorPago !== null && valorPago !== '') {
+      var fAnt = Fin.faturaDoMes(DB, ano, mes0, cartaoKey), faltaC = c(fAnt.falta), vpC = c(valorPago);
+      if (!(vpC > 0)) throw new Error('Informe o valor que você pagou.');
+      if (faltaC <= 0) throw new Error('Esta fatura já está paga.');
+      if (vpC > faltaC) throw new Error('O valor pago é maior que a fatura (' + fmt(fAnt.falta) + ').');
+      if (vpC < faltaC) {
+        var ch = cartaoKey + '|' + alvo, antC = descFaturaC(raw, cartaoKey, alvo);
+        tok.desc = { chave: ch, antes: antC > 0 ? r(antC) : null };
+        gravarDescFatura(DB, ch, r(antC + faltaC - vpC));
+      }
+    }
     Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
       var dv = dividaPorId(DB, l.dvId);
       if (!dv || cartaoDivMeta(cfg, meta, dv) !== cartaoKey || l.status === 'Pago') return;
@@ -1169,7 +1247,14 @@
       if (!d.status) d.status = s12();
       d.status[t.m] = t.antes || '';
     }
+    if (token && token.desc) gravarDescFatura(DB, token.desc.chave, token.desc.antes);
     return DB;
+  };
+  // Tira o desconto de uma fatura (ex.: lançado errado). Devolve o valor que havia.
+  Fin.tirarDescontoFatura = function (DB, ano, mes0, cartaoKey) {
+    var ch = cartaoKey + '|' + ym(ano, mes0), antes = r(descFaturaC(cfgDadosRO(DB), cartaoKey, ym(ano, mes0)));
+    gravarDescFatura(DB, ch, null);
+    return antes;
   };
 
   // ===================== mutações de planejamento =====================

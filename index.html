@@ -287,7 +287,7 @@ table.t td.tt,table.t th.tt{background:var(--ap2);font-weight:700}
 .emj{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}.emj-b{min-height:44px;font-size:22px;border:1.5px solid var(--bl);border-radius:10px;background:transparent;cursor:pointer}.emj-b.on{border-color:var(--b6);background:var(--ap)}.sep-l{position:sticky;left:12px;display:inline-flex;align-items:center;gap:4px}tr.sep.fora td{background:transparent;border-top:2px solid var(--bl);text-transform:none;letter-spacing:0;font-size:13px;padding:14px}tr.sep.fora .lk{display:inline-flex;align-items:center;gap:6px}.fora-s{margin-left:12px;font-weight:400;opacity:.7}.fora-m{opacity:.92}
 .sec-s{font-size:12.5px;opacity:.68;margin-top:2px;font-weight:400}
 .fat{border-top:1px solid var(--bl);padding:14px 18px 6px}.fat-h{display:flex;align-items:center;gap:12px}.fat-tx{flex:1 1 auto;min-width:0}.fat-t{font-weight:600;font-size:16px}.fat-s{font-size:13px;opacity:.7}.fat-v{font-family:var(--fm,ui-monospace,monospace);font-weight:600;font-size:16px;white-space:nowrap}
-.fat-a{margin:10px 0 4px 48px}.fat-ok{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--b6)}.fat-ok .i{width:16px;height:16px}.fat .grp{margin:0 -18px}
+.fat-a{margin:10px 0 4px 48px;display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px}.fat-ok{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--b6)}.fat-ok .i{width:16px;height:16px}.fat .grp{margin:0 -18px}
 .btn-sm{min-height:44px;padding:0 16px;font-size:14px}.chk-l{display:flex;align-items:center;gap:10px;font-size:14px;margin:4px 0 14px;min-height:44px}.chk-l input{width:20px;height:20px}.sec-h{display:flex;align-items:center;gap:10px}.sep-s{display:inline-block;vertical-align:middle;margin-right:8px}.sep-s .selo{display:inline-block}.btn-ed{width:100%;justify-content:flex-start;margin:0 0 14px;font-size:14px;text-align:left}.cartoes{display:flex;flex-wrap:wrap;gap:8px}.cart{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border-radius:12px;border:1.5px solid var(--bl);background:transparent;font:inherit;font-size:14px;cursor:pointer;color:inherit;min-height:44px}.cart.on{border-color:var(--b6);background:var(--ap)}.cart-px{width:24px;height:24px;border-radius:7px;background:var(--bl);display:flex;align-items:center;justify-content:center}.cart-px .i{width:15px;height:15px}.selo{display:block;flex:0 0 auto}.tp-x{background:var(--o4);color:var(--t2)}
 tr.sep td{background:var(--bl);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:8px 14px}
 tr.enc td{opacity:.62}.enc-t{display:block;font-size:11px;font-weight:400;opacity:.8}.hx{display:block;margin-top:4px;opacity:.85}
@@ -1423,8 +1423,8 @@ function pgPMes(m){
 function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.length)return '';
   h+='<section class="card sec" id="sec-cart"><div class="card-h"><div><h2>'+tit+'</h2><div class="sec-s">'+sub+'</div></div></div>';
     fats.forEach(function(x){var f=x.f,c=x.c,paga=f.falta<=0.009,nAb=f.itens.filter(function(i){return i.status!=='Pago'}).length;
-      h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga':' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(f.total)+'</div></div>';
-      h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button>')+' <button class="lk" data-acao="fat-conf" data-k="'+c.k+'">Conferir com a fatura do banco</button></div>';
+      h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga'+(f.desconto>0?' com desconto de '+fm(f.desconto):''):' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(f.total)+'</div></div>';
+      h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button> <button class="lk" data-acao="fat-desc" data-k="'+c.k+'">Com desconto</button>')+' <button class="lk" data-acao="fat-conf" data-k="'+c.k+'">Conferir com o banco</button></div>';
       h+=grp('fat-'+c.k,'Ver '+plural(f.itens.length,'compra','compras')+(nAb&&!paga?' · '+nAb+' em aberto':''),'',function(){return '<ul class="lst">'+f.itens.map(function(i){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
         var d=achar('despesas',i.id);return d?linhaDesp(d,m,{}):''}).join('')+'</ul>'});
@@ -1956,6 +1956,8 @@ var ACOES={
   parc:function(d){formDivida(d.dv,d.ym)},
   'parc-pagar':function(d){parcPagar(d.dv,d.ym)},
   'parc-parcial':function(d){parcParcial(d.dv,d.ym)},
+  'parc-desc':function(d){parcDescontoForm(d.dv,d.ym)},
+  'fat-desc':function(d){faturaDescontoForm(d.k)},
   'parc-desf':function(d){parcDesfazer(d.dv,d.ym)},
   'ir-div':function(){cmo();gp('dividas')},
   'dv-menu':function(d,el){menuDivida(d.dv,el)},
@@ -2025,7 +2027,7 @@ function restaurarPag(dvId,ym,ant){var d=acharDiv(dvId);if(!d)return;if(ant>0)Fi
 function infoParcela(dv,ym){
   var pl=Fin.planoParcelas(dv)||[],p=null;
   for(var i=0;i<pl.length;i++)if(pl[i].ym===ym){p=pl[i];break}
-  return{p:p,qtd:pl.length,pago:Number((dv.pagamentos||{})[ym])||0};
+  return{p:p,qtd:pl.length,pago:Number((dv.pagamentos||{})[ym])||0,desc:Fin.descontoDe(dv,ym)};
 }
 function abrirParcela(dvId,ym){
   var dv=acharDiv(dvId);if(!dv)return;
@@ -2036,16 +2038,18 @@ function abrirParcela(dvId,ym){
     }else toast('Parcela não encontrada');
     return;
   }
-  var falta=Fin.r(Math.max(0,Fin.c(inf.p.valor)-Fin.c(inf.pago)));
+  var falta=Fin.r(Math.max(0,Fin.c(inf.p.valor)-Fin.c(inf.pago)-Fin.c(inf.desc)));
   var ln=(Fin.parcelasDoMes(DB,ymAno(ym),ymMes(ym))||[]).filter(function(x){return x.dvId===dv.id})[0],coberta=res.quitada||(ln&&ln.status==='Pago');
   var h='<h3>'+esc(dv.name)+'</h3><p class="ms">Parcela '+inf.p.k+' de '+inf.qtd+' · '+ymTxt(ym)+(dv.credor?' · '+esc(dv.credor):'')+'</p>';
   h+='<div class="resumo"><div><div class="sx-l">Parcela</div><div class="sx-v">'+fm(inf.p.valor)+'</div></div><div><div class="sx-l">Pago</div><div class="sx-v'+(inf.pago>0?' ok':' mu')+'">'+fm(inf.pago)+'</div></div><div><div class="sx-l">Falta</div><div class="sx-v'+(falta>0&&!coberta?' al':' mu')+'">'+fm(coberta?0:falta)+'</div></div></div>';
-  if(coberta&&falta>0)h+='<div class="ins gd"><span class="em">'+svg('ok')+'</span>'+(res.quitada?'Dívida <strong>quitada</strong>: não há saldo a pagar.':'Parcela <strong>coberta</strong> pelo que já foi pago antes do plano ou por amortização.')+'</div>';
+  if(inf.desc>0)h+='<div class="ins gd"><span class="em">'+svg('ok')+'</span>Paga com <strong>desconto de '+fm(inf.desc)+'</strong>: saiu do caixa '+fm(inf.pago)+'.</div>';
+  else if(coberta&&falta>0)h+='<div class="ins gd"><span class="em">'+svg('ok')+'</span>'+(res.quitada?'Dívida <strong>quitada</strong>: não há saldo a pagar.':'Parcela <strong>coberta</strong> pelo que já foi pago antes do plano ou por amortização.')+'</div>';
   else if(falta>0)h+='<div class="fd"><label for="pcV">Pagar só uma parte (R$)</label><input type="text" id="pcV" inputmode="decimal" autocomplete="off" placeholder="Ex.: '+vIn(Fin.r(Math.round(Fin.c(falta)/2)))+'"></div>';
   h+='<button type="button" class="btn btn-s btn-ed" data-acao="dv-edit" data-dv="'+esc(dv.id)+'">'+svg('edit')+'Editar compra: como foi comprada, cartão, categoria, parcelas</button><div class="mac">';
   if(inf.pago>0)h+='<button class="btn btn-g" data-acao="parc-desf" data-dv="'+id+'" data-ym="'+yme+'">'+svg('undo')+'Desfazer pagamento</button>';
   if(falta>0&&!coberta){
     h+='<button class="btn btn-s" data-acao="parc-parcial" data-dv="'+id+'" data-ym="'+yme+'">Pagar parcial</button>';
+    h+='<button class="btn btn-s" data-acao="parc-desc" data-dv="'+id+'" data-ym="'+yme+'">Paguei com desconto</button>';
     h+='<button class="btn btn-p" data-acao="parc-pagar" data-dv="'+id+'" data-ym="'+yme+'">Pagar '+fm(inf.pago>0?falta:inf.p.valor)+'</button>';
   }else h+='<button class="btn btn-s" onclick="cmo()">Fechar</button>';
   om(h+'</div>');
@@ -2063,6 +2067,47 @@ function parcDesfazer(dvId,ym){
   var dv=acharDiv(dvId);if(!dv)return;
   confirmar('Desfazer pagamento?','Remove o pagamento de <strong>'+fm((dv.pagamentos||{})[ym]||0)+'</strong> de '+esc(dv.name)+' em '+ymTxt(ym)+'.','Desfazer',function(){Fin.desfazerPagamento(dv,ym);toast('Pagamento desfeito');R()},true);
 }
+
+// Parcela antecipada paga por menos (desconto de juros): sai do caixa só o que foi pago, a parcela fica paga
+var PDC=null;
+function parcDescontoForm(dvId,ym){
+  var dv=acharDiv(dvId);if(!dv)return;var inf=infoParcela(dv,ym);if(!inf.p)return;
+  var falta=Fin.r(Math.max(0,Fin.c(inf.p.valor)-Fin.c(inf.pago)-Fin.c(inf.desc)));PDC={dv:dvId,ym:ym,falta:falta};
+  om('<h3>Paguei com desconto</h3><p class="ms">'+esc(dv.name)+' · parcela '+inf.p.k+' de '+inf.qtd+' · '+ymTxt(ym)+'</p>'+
+  '<div class="fd"><label for="pdV">Quanto você pagou (R$)</label><input type="text" inputmode="decimal" id="pdV" class="inp" autocomplete="off" placeholder="Parcela: '+vIn(falta)+'" oninput="pdPrev()"><div class="fd-h" id="pdH">Digite o valor que saiu da conta. A diferença para '+fm(falta)+' vira desconto e a parcela fica paga.</div></div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="parcDescontoSalvar()">Registrar pagamento</button></div>');
+  setTimeout(function(){var e=document.getElementById('pdV');if(e)e.focus()},60);
+}
+function pdPrev(){var el=document.getElementById('pdH');if(!el||!PDC)return;var v=lerValor((document.getElementById('pdV')||{}).value);
+  if(v===null||v<=0){el.innerHTML='Digite o valor que saiu da conta. A diferença para '+fm(PDC.falta)+' vira desconto e a parcela fica paga.';return}
+  if(Fin.c(v)>=Fin.c(PDC.falta)){el.innerHTML='Esse valor não é menor que a parcela ('+fm(PDC.falta)+'). Sem desconto, use <strong>Pagar</strong>.';return}
+  el.innerHTML='Desconto de <strong>'+fm(Fin.r(Fin.c(PDC.falta)-Fin.c(v)))+'</strong>. Sai do caixa '+fm(v)+' e a parcela fica paga.'}
+function parcDescontoSalvar(){
+  if(!PDC)return;var dv=acharDiv(PDC.dv);if(!dv)return;
+  var v=lerValor((document.getElementById('pdV')||{}).value);
+  if(v===null||v<=0){erroCampo('pdV','Digite o valor que você pagou (ex.: 1.044,22).');return}
+  var ym=PDC.ym,dvId=dv.id,snap={pag:Object.prototype.hasOwnProperty.call(dv.pagamentos||{},ym)?dv.pagamentos[ym]:null,flags:(dv.flags||[]).slice()},res;
+  try{res=Fin.pagarComDesconto(dv,ym,v)}catch(e){erroCampo('pdV',esc(e.message));return}
+  PDC=null;cmo();UI.flash='parc|'+dvId+'|'+ym;
+  toast('Paga com desconto de '+fm(res.desconto),function(){var d=acharDiv(dvId);if(!d)return;if(!d.pagamentos)d.pagamentos={};if(snap.pag===null)delete d.pagamentos[ym];else d.pagamentos[ym]=snap.pag;d.flags=snap.flags;toast('Desfeito');R()},10000);R();
+}
+// Fatura antecipada paga por menos que o total (desconto do banco)
+var FDC=null;
+function faturaDescontoForm(k){var c=cartaoPorChave(k);if(!c)return;var f=Fin.faturaDoMes(DB,DB.curYear,DB.mo,k);if(!(f.falta>0))return;FDC={k:k,falta:f.falta};
+  om('<h3>Fatura '+esc(c.n)+' com desconto</h3><p class="ms">'+MN[DB.mo]+'/'+DB.curYear+' · em aberto '+fm(f.falta)+'</p>'+
+  '<div class="fd"><label for="fdV">Quanto você pagou (R$)</label><input type="text" inputmode="decimal" id="fdV" class="inp" autocomplete="off" placeholder="'+vIn(f.falta)+'" oninput="fdPrev()"><div class="fd-h" id="fdH">Digite o valor que saiu da conta. A diferença vira desconto, as compras do mês ficam pagas e o saldo do mês sobe o desconto.</div></div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="faturaDescontoSalvar()">Pagar fatura</button></div>');
+  setTimeout(function(){var e=document.getElementById('fdV');if(e)e.focus()},60);}
+function fdPrev(){var el=document.getElementById('fdH');if(!el||!FDC)return;var v=lerValor((document.getElementById('fdV')||{}).value);
+  if(v===null||v<=0){el.innerHTML='Digite o valor que saiu da conta. A diferença vira desconto, as compras do mês ficam pagas e o saldo do mês sobe o desconto.';return}
+  if(Fin.c(v)>Fin.c(FDC.falta)){el.innerHTML='Esse valor é maior que a fatura em aberto ('+fm(FDC.falta)+').';return}
+  if(Fin.c(v)===Fin.c(FDC.falta)){el.innerHTML='Sem desconto: a fatura será paga pelo valor cheio.';return}
+  el.innerHTML='Desconto de <strong>'+fm(Fin.r(Fin.c(FDC.falta)-Fin.c(v)))+'</strong>. Sai do caixa '+fm(v)+'.'}
+function faturaDescontoSalvar(){if(!FDC)return;var k=FDC.k,c=cartaoPorChave(k);var v=lerValor((document.getElementById('fdV')||{}).value);
+  if(v===null||v<=0){erroCampo('fdV','Digite o valor que você pagou (ex.: 1.250,40).');return}
+  var tok;try{tok=Fin.pagarFatura(DB,DB.curYear,DB.mo,k,v)}catch(e){erroCampo('fdV',esc(e.message));return}
+  var ch=k+'|'+DB.curYear+'|'+DB.mo,desc=Fin.r(Fin.c(FDC.falta)-Fin.c(v));FAT_TOK[ch]=tok;FDC=null;cmo();
+  toast('Fatura '+c.n+' paga · '+fm(v)+(desc>0?' (desconto '+fm(desc)+')':''),function(){desfazerFaturaUI(k)},10000);R()}
 
 // ===== DÍVIDAS (modelo global, regras no motor) =====
 var DV_ROT={'em-dia':'Em dia','atrasada':'Atrasada','quitada':'Quitada','radar':'No radar','encerrada':'Encerrada'};
@@ -2177,12 +2222,12 @@ var DVF=null;   // contexto do formulario de divida aberto
 // bloco de pagamento da parcela do mês (o que antes era uma folha separada)
 function blocoParcela(dv,ym){var inf=infoParcela(dv,ym),res=Fin.divResumo(dv,hojeYM()),id=esc(dv.id),yme=esc(ym);if(!inf.p&&!(inf.pago>0))return '';
   if(!inf.p)return '<div class="pc-blk"><div class="pc-t">Pagamento fora do plano · '+ymTxt(ym)+' · '+fm(inf.pago)+'</div><div class="mac" style="margin-top:8px"><button class="btn btn-g" data-acao="parc-desf" data-dv="'+id+'" data-ym="'+yme+'">'+svg('undo')+'Desfazer</button></div></div>';
-  var falta=Fin.r(Math.max(0,Fin.c(inf.p.valor)-Fin.c(inf.pago))),ln=(Fin.parcelasDoMes(DB,ymAno(ym),ymMes(ym))||[]).filter(function(x){return x.dvId===dv.id})[0],cob=res.quitada||(ln&&ln.status==='Pago');
-  var h='<div class="pc-blk"><div class="pc-t">Parcela '+inf.p.k+' de '+inf.qtd+' · '+ymTxt(ym)+'</div><div class="pc-l"><span>Valor <b>'+fm(inf.p.valor)+'</b></span><span>Pago <b>'+fm(inf.pago)+'</b></span><span>'+(cob?'<b class="ok">Paga</b>':'Falta <b class="al">'+fm(falta)+'</b>')+'</span></div>';
+  var falta=Fin.r(Math.max(0,Fin.c(inf.p.valor)-Fin.c(inf.pago)-Fin.c(inf.desc))),ln=(Fin.parcelasDoMes(DB,ymAno(ym),ymMes(ym))||[]).filter(function(x){return x.dvId===dv.id})[0],cob=res.quitada||(ln&&ln.status==='Pago');
+  var h='<div class="pc-blk"><div class="pc-t">Parcela '+inf.p.k+' de '+inf.qtd+' · '+ymTxt(ym)+'</div><div class="pc-l"><span>Valor <b>'+fm(inf.p.valor)+'</b></span><span>Pago <b>'+fm(inf.pago)+'</b></span>'+(inf.desc>0?'<span>Desconto <b class="ok">'+fm(inf.desc)+'</b></span>':'')+'<span>'+(cob?'<b class="ok">Paga</b>':'Falta <b class="al">'+fm(falta)+'</b>')+'</span></div>';
   if(falta>0&&!cob)h+='<div class="fd" style="margin:10px 0 0"><label for="pcV">Pagar só uma parte (R$)</label><input type="text" id="pcV" inputmode="decimal" autocomplete="off" placeholder="Opcional"></div>';
   h+='<div class="pc-a">';
   if(inf.pago>0)h+='<button class="btn btn-g" data-acao="parc-desf" data-dv="'+id+'" data-ym="'+yme+'">'+svg('undo')+'Desfazer pagamento</button>';
-  if(falta>0&&!cob)h+='<button class="btn btn-s" data-acao="parc-parcial" data-dv="'+id+'" data-ym="'+yme+'">Pagar parcial</button><button class="btn btn-p" data-acao="parc-pagar" data-dv="'+id+'" data-ym="'+yme+'">Pagar '+fm(inf.pago>0?falta:inf.p.valor)+'</button>';
+  if(falta>0&&!cob)h+='<button class="btn btn-s" data-acao="parc-parcial" data-dv="'+id+'" data-ym="'+yme+'">Pagar parcial</button><button class="btn btn-s" data-acao="parc-desc" data-dv="'+id+'" data-ym="'+yme+'">Paguei com desconto</button><button class="btn btn-p" data-acao="parc-pagar" data-dv="'+id+'" data-ym="'+yme+'">Pagar '+fm(inf.pago>0?falta:inf.p.valor)+'</button>';
   return h+'</div></div>'}
 function formDivida(id,ym){
   var dv=id?acharDiv(id):null;DVF={id:dv?dv.id:null};var ref=dv?refV(dv):null,d=dv?dimDe(ref):{obrigacao:'compra',meio:'credito',cartao:null},rs=dv?Fin.divResumo(dv,hojeYM()):null;
