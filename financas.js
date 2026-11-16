@@ -324,7 +324,8 @@
       var linhas = linhasDoMes(DB, ym(k, m), cache), parcC = 0;
       for (i = 0; i < linhas.length; i++) { parcC += c(linhas[i].valor); if (linhas[i].status !== 'Pago') pend++; }
       var totDespC = despC + parcC;
-      var saldoC = rendaC + sobraC - totDespC;
+      // o que vai para a reserva sai da sobra disponível; o resgate volta para ela
+      var saldoC = rendaC + sobraC - totDespC - resC;
       var operC = rendaC - extraC - finC;
       out.push({
         renda: r(rendaC), rendaExtra: r(extraC), rendaFinanc: r(finC),
@@ -359,6 +360,47 @@
     return r(tot);
   };
 
+  // Saldo de cada reserva (pelo nome, somando os anos) até o mês, e o movimento do mês.
+  // Inclui reservas sem valor, para aparecerem na tela. Ordem: maior saldo primeiro.
+  Fin.reservas = function (DB, ano, mes0) {
+    var alvo = Number(ano), mapa = {}, ordem = [];
+    Object.keys((DB && DB.years) || {}).sort().forEach(function (y) {
+      var n = Number(y);
+      if (n > alvo) return;
+      var lim = n === alvo ? mes0 : 11;
+      (DB.years[y].reserva || []).forEach(function (x) {
+        var k = normNome(x.name);
+        if (!k) return;
+        if (!mapa[k]) { mapa[k] = { nome: String(x.name).trim(), saldoC: 0, movC: 0 }; ordem.push(k); }
+        for (var m = 0; m <= lim; m++) mapa[k].saldoC += vC(x, m);
+        if (n === alvo) mapa[k].movC += vC(x, mes0);
+      });
+    });
+    return ordem.map(function (k) { var o = mapa[k]; return { nome: o.nome, saldo: r(o.saldoC), mov: r(o.movC) }; })
+      .sort(function (a, b) { return b.saldo - a.saldo; });
+  };
+
+  // Guarda (valor > 0) ou resgata (valor < 0) numa reserva no mês. Cria a reserva no ano se não existir.
+  // Resgate não pode passar do saldo dela até o mês. Devolve {ok, erro, item, antes}.
+  Fin.moverReserva = function (DB, ano, mes0, nome, valor) {
+    var k = String(ano), Y = DB && DB.years ? DB.years[k] : null, n = normNome(nome), vc = c(valor);
+    if (!Y) return { ok: false, erro: 'O ano ' + k + ' não existe no app.' };
+    if (!n) return { ok: false, erro: 'Escolha a reserva.' };
+    if (!vc) return { ok: false, erro: 'Informe o valor.' };
+    if (!(mes0 >= 0 && mes0 <= 11)) return { ok: false, erro: 'Mês inválido.' };
+    if (vc < 0) {
+      var tem = 0;
+      Fin.reservas(DB, k, mes0).forEach(function (x) { if (normNome(x.nome) === n) tem = c(x.saldo); });
+      if (-vc > tem) return { ok: false, erro: 'Essa reserva tem R$ ' + fmt(r(tem)) + ' até este mês.' };
+    }
+    if (!Y.reserva) Y.reserva = [];
+    var it = null;
+    Y.reserva.forEach(function (x) { if (!it && normNome(x.name) === n) it = x; });
+    if (!it) { it = { id: Fin.novoId('s'), name: String(nome).trim(), values: z12() }; Y.reserva.push(it); }
+    var antes = it.values[mes0] || 0;
+    it.values[mes0] = r(c(antes) + vc);
+    return { ok: true, item: it, antes: antes };
+  };
   // ===================== configuração do app e contas encerradas =====================
   // A configuração mora num registro da lista de divergências (tipo 'config'), porque a planilha
   // já guarda esse registro com um campo JSON livre. Não é divergência: as telas o ignoram.

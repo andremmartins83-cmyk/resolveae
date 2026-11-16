@@ -135,16 +135,19 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 .kpi-s{display:block;font-size:12px;color:var(--t2);margin-top:2px}
 .regua{position:relative;display:flex;gap:2px;height:10px;border-radius:5px;overflow:hidden;background:var(--ap);margin:22px 0 10px}
 .regua i{display:block;height:100%;flex-shrink:0}
-.rg-d{background:var(--b6)}.rg-p{background:var(--b4)}.rg-x{background:var(--r5)}
+.rg-d{background:var(--b6)}.rg-p{background:var(--b4)}.rg-r{background:var(--o4)}.rg-x{background:var(--r5)}
 .regua-l{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12px;color:var(--t2);margin-bottom:18px}
 .regua-l span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .regua-l b{font-family:var(--mono);font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums}
 .sw{width:9px;height:9px;border-radius:3px;display:inline-block}
-.sw.d{background:var(--b6)}.sw.p{background:var(--b4)}.sw.s{background:var(--ap);box-shadow:inset 0 0 0 1px var(--bd)}.sw.x{background:var(--r5)}
+.sw.d{background:var(--b6)}.sw.p{background:var(--b4)}.sw.r{background:var(--o4)}.sw.s{background:var(--ap);box-shadow:inset 0 0 0 1px var(--bd)}.sw.x{background:var(--r5)}
 
 /* faixa de numeros (painel, dividas, controle) */
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--bl);border-radius:var(--rad);background:var(--wh);margin-bottom:20px;overflow:hidden}
 .stats.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stats.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ph-b{display:flex;gap:8px;flex-wrap:wrap}
+.ab.ab-p{background:var(--b6);border-color:var(--b6);color:#fff}.ab.ab-p:hover{background:var(--b5)}
 .stats>div{padding:15px 20px;border-left:1px solid var(--bl);min-width:0}
 .stats>div:first-child{border-left:0}
 .hero .stats{border:0;border-top:1px solid var(--bl);border-radius:0;margin:0 -26px;background:0}
@@ -389,6 +392,7 @@ tr.auto td,tr.auto td.cn{background:var(--b50)}
 .lc-cat{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 13px 0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--wh);font-size:13.5px;font-weight:600;color:var(--tx);cursor:pointer;max-width:100%}
 .lc-cat .e{font-size:15px;line-height:1}
 .lc-cat .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-sd{font-family:var(--mono);font-weight:500;font-size:11.5px;color:var(--t3);margin-left:6px}
 .lc-cat:hover{border-color:var(--b5)}
 .lc-cat.on{background:var(--b6);color:#fff;border-color:var(--b6)}
 .lc-cat.nova{border-style:dashed;color:var(--t2)}
@@ -1230,7 +1234,7 @@ var cl='dot'+(SYNC.estado==='enviando'?' wn':SYNC.estado==='erro'?' er':SYNC.est
 h+='<button class="hd-sync" id="hdSync" data-estado="'+esc(SYNC.estado)+'" onclick="sincronizarAgora()" title="'+esc(SYNC.msg)+'" aria-label="Sincronização: '+esc(SYNC.msg)+'"><span class="'+cl+'" id="hdSyncDot"></span><span class="tx" id="hdSyncTxt">'+esc(SYNC.msg)+'</span></button>';
 document.getElementById('hd').innerHTML=h}
 function rPG(m){var pages={dashboard:pgD,plan:pgP,controle:pgCtrl,lancamentos:pgLanc,renda:pgR,despesas:pgDe,reserva:pgRe,graficos:pgG,dividas:pgDiv,divergencias:pgDivg,importar:pgImp,categorias:pgCat};if(!Y())estadoTelaHoje(DB);fecharMenu();
-var ct=document.getElementById('ct'),largo=!mob()&&{plan:1,renda:1,despesas:1,reserva:1}[DB.pg];
+var ct=document.getElementById('ct'),largo=!mob()&&{plan:1,renda:1,despesas:1}[DB.pg];
 ct.className='ct'+(largo?' ct-l':'');
 var tsAnt=largo&&UI.tsChave===DB.pg+'|'+DB.curYear+'|'+m?UI.tsLeft||0:-1;   // guardado pelo evento de rolagem: ler scrollLeft aqui forcaria layout
 ct.innerHTML=telaCarga()||(pages[DB.pg]||pgD)(m);
@@ -1304,7 +1308,8 @@ function pgD(m){
   var nf=y.despesas.filter(function(x){return x.tipo==='fixa'&&x.values[m]>0}).length,nv=y.despesas.filter(function(x){return x.tipo==='variavel'&&x.values[m]>0}).length;
   var h='<div class="pg on">'+avisoAnoNovo();
   // painel do mes
-  var frase=s>0?'Sobra que passa para '+mProx+'.':s<0?'Faltam <strong>'+fm(-s)+'</strong> para fechar '+mes+'.':'Renda e despesas empatadas em '+mes+'.';
+  var gu=t.reserva||0;
+  var frase=s>0?'Sobra que passa para '+mProx+(gu>0?', já tirando '+fm(gu)+' guardados na reserva':'')+'.':s<0?'Faltam <strong>'+fm(-s)+'</strong> para fechar '+mes+'.':'Renda e despesas empatadas em '+mes+'.';
   if(!(t.renda>0))frase+=' <span class="al">Sem renda prevista em '+mes+'.</span>';
   var fora2=Fin.r(Fin.c(t.renda)-Fin.c(t.rendaOperacional));
   if(fora2>0)frase+=' <span class="hx">Renda do mês: '+fm(t.rendaOperacional)+' (fora extras e empréstimos de '+fm(fora2)+'). Só com ela, '+mes+' fecharia em <strong>'+fm(t.resultadoSemExtras)+'</strong>, sem contar a sobra.</span>';
@@ -1315,8 +1320,8 @@ function pgD(m){
   h+='<div class="kpi"><div class="eyb">Comprometido</div><span class="kpi-v '+kc+'">'+(t.renda>0?pct.toFixed(0)+'%':'—')+'</span><span class="kpi-s">da renda do mês'+(fora2>0&&pctOp>0?' · sem extras '+pctOp.toFixed(0)+'%':'')+'</span></div></div></div>';
   // regua: quanto da renda (com a sobra) vai para despesas, parcelas e o que sobra
   var base=Math.max(rT,t.despesas,1),wD=Math.max(0,t.despProprias)/base*100,wP=Math.max(0,t.parcelas)/base*100;
-  h+='<div class="regua" role="img" aria-label="Despesas '+fm(t.despProprias)+', parcelas '+fm(t.parcelas)+', '+(s>=0?'sobra '+fm(s):'falta '+fm(-s))+'"><i class="rg-d" style="width:'+wD.toFixed(2)+'%"></i><i class="rg-p" style="width:'+wP.toFixed(2)+'%"></i>'+(s<0?'<i class="rg-x" style="position:absolute;right:0;top:0;width:'+(Math.min(100,-s/base*100)).toFixed(2)+'%"></i>':'')+'</div>';
-  h+='<div class="regua-l"><span><i class="sw d"></i>Despesas <b>'+fm(t.despProprias)+'</b></span><span><i class="sw p"></i>Parcelas de dívida <b>'+fm(t.parcelas)+'</b></span>'+(s>=0?'<span><i class="sw s"></i>Sobra <b>'+fm(s)+'</b></span>':'<span><i class="sw x"></i>Falta <b>'+fm(-s)+'</b></span>')+'</div>';
+  h+='<div class="regua" role="img" aria-label="Despesas '+fm(t.despProprias)+', parcelas '+fm(t.parcelas)+', '+(s>=0?'sobra '+fm(s):'falta '+fm(-s))+'"><i class="rg-d" style="width:'+wD.toFixed(2)+'%"></i><i class="rg-p" style="width:'+wP.toFixed(2)+'%"></i>'+(gu>0?'<i class="rg-r" style="width:'+(gu/base*100).toFixed(2)+'%"></i>':'')+(s<0?'<i class="rg-x" style="position:absolute;right:0;top:0;width:'+(Math.min(100,-s/base*100)).toFixed(2)+'%"></i>':'')+'</div>';
+  h+='<div class="regua-l"><span><i class="sw d"></i>Despesas <b>'+fm(t.despProprias)+'</b></span><span><i class="sw p"></i>Parcelas de dívida <b>'+fm(t.parcelas)+'</b></span>'+(gu>0?'<span><i class="sw r"></i>Guardado <b>'+fm(gu)+'</b></span>':'')+(s>=0?'<span><i class="sw s"></i>Sobra <b>'+fm(s)+'</b></span>':'<span><i class="sw x"></i>Falta <b>'+fm(-s)+'</b></span>')+'</div>';
   var hs='<div class="stats"><div><div class="sx-l">Renda de '+mes+'</div><div class="sx-v ok">'+fm(t.renda)+'</div><div class="sx-s">'+(t.rendaExtra>0?'inclui '+fm(Fin.r(Fin.c(t.rendaExtra)-0))+' de extras · ':'')+(t.rendaFinanc>0?fm(t.rendaFinanc)+' de empréstimo · ':'')+(cr>0?'+ '+fm(cr)+' de '+mAnt:cr<0?fm(cr)+' de '+mAnt:'sem sobra anterior')+'</div></div>';
   hs+='<div><div class="sx-l">Despesas</div><div class="sx-v">'+fm(t.despProprias)+'</div><div class="sx-s">'+nf+' fixas · '+nv+' variáveis</div></div>';
   hs+='<div><div class="sx-l">Parcelas de dívida</div><div class="sx-v">'+fm(t.parcelas)+'</div><div class="sx-s">'+plural(pm2.length,'parcela')+' · '+pcd.toFixed(0)+'% da renda</div></div>';
@@ -1563,7 +1568,19 @@ function fDeAtual(){var f=fPAtual();return (f==='dividas'||f==='cartoes')?'todas
 function filtDe(){return Y().despesas.filter(function(d){return !Fin.cartaoDespesa(DB,d)&&Fin.passaFiltro(DB,refD(d),fDeAtual())})}
 function filtroDe(){return chipsFiltro(['cartoes','dividas'])}
 function avisoCartoes(){var n=Y().despesas.filter(function(d){return Fin.cartaoDespesa(DB,d)}).length;return n?'<p class="fd-h aviso-cart">Gastos de cartão ficam em <button class="lk" onclick="gp(\'dividas\')">Dívidas › Cartões</button>.</p>':''}
-function pgRe(m){return vTB('reserva',m,'Reserva')}
+function pgRe(m){
+  var lst=Fin.reservas(DB,DB.curYear,m),mes=MN[m].toLowerCase(),tot=0,mov=0;
+  lst.forEach(function(x){tot+=Fin.c(x.saldo);mov+=Fin.c(x.mov)});
+  var h='<div class="pg on"><div class="ph"><div class="pt">Reserva<small>'+MN[m]+' '+esc(DB.curYear)+'</small></div><div class="ph-b"><button class="ab" data-acao="res-mov" data-mv="r">'+svg('undo')+'Resgatar</button><button class="ab ab-p" data-acao="res-mov" data-mv="g">'+svg('plus')+'Guardar</button></div></div>';
+  h+='<div class="stats c2"><div><div class="sx-l">Total guardado</div><div class="sx-v ok">'+fm(Fin.r(tot))+'</div><div class="sx-s">até '+SH[m]+'/'+esc(DB.curYear)+'</div></div>';
+  h+='<div><div class="sx-l">Neste mês</div><div class="sx-v">'+(mov>0?'+ ':'')+fm(Fin.r(mov))+'</div><div class="sx-s">'+(mov>0?'saiu da sobra do mês':mov<0?'voltou para a sobra':'nada guardado ou resgatado')+'</div></div></div>';
+  h+='<section class="card"><ul class="lst">';
+  if(!lst.length)h+='<li class="vazio">Nenhuma reserva ainda. Toque em Guardar.</li>';
+  lst.forEach(function(x){var sub=x.mov>0?'Guardou '+fm(x.mov)+' em '+mes:x.mov<0?'Resgatou '+fm(-x.mov)+' em '+mes:'Sem movimento em '+mes;
+    h+='<li class="row"><button class="row-main" data-acao="res-mov" data-mv="g" data-n="'+esc(x.nome)+'"><span class="ic">'+icRes(x.nome)+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span><span class="row-s">'+sub+'</span></span><span class="row-v ok">'+fm(x.saldo)+'</span></button></li>'});
+  h+='</ul></section>';
+  h+='<div class="ins"><span class="em">'+svg('info')+'</span>O que vai para a reserva sai da sobra do mês, para a sobra mostrar só o que dá para gastar. Para usar o dinheiro de uma reserva, toque em Resgatar.</div>';
+  return h+'</div>'}
 
 function pgG(m){var ms=[0,1,2,3,4,5,6,7,8,9,10,11],ra=avgNZ(ms.map(function(i){return tR(i)})),da=avgNZ(ms.map(function(i){return tD(i)})),pG=ra>0?da/ra*100:0,rt=accRe(11);
 var h='<div class="pg on"><div class="pt">Raio-X '+esc(DB.curYear)+'<small>Médias dos meses com valor.</small></div><div class="stats"><div><div class="sx-l">Renda média</div><div class="sx-v ok">'+fm(ra)+'</div><div class="sx-s">sem a sobra do mês anterior</div></div><div><div class="sx-l">Despesa média</div><div class="sx-v">'+fm(da)+'</div><div class="sx-s">com parcelas</div></div><div><div class="sx-l">Comprometimento</div><div class="sx-v '+(pG>100?'al':'ok')+'">'+pG.toFixed(0)+'%</div><div class="sx-s">despesa ÷ renda</div></div><div><div class="sx-l">Reserva acumulada</div><div class="sx-v">'+fm(rt)+'</div><div class="sx-s">até dezembro</div></div></div>';
@@ -1886,6 +1903,7 @@ function erroCampo(id,msg){
 // Acoes por data-* com um unico ouvinte (nada de dado do usuario dentro de onclick).
 // Captura: roda antes do stopPropagation do modal.
 var ACOES={
+  'res-mov':function(d){abrirLancReserva(d.mv,d.n||'')},
   dlg:function(d){var f=DLG[Number(d.i)];cmo();if(f)f()},
   qp:function(d,el){qp(d.id,Number(d.m),el)},
   pp:function(d,el){pagarParcelaRapido(d.dv,d.ym,el)},
@@ -2697,7 +2715,14 @@ function dataPadrao(){
 function abrirLanc(){LC.tipo='despesa';LC.cat='';LC.extras=[];LC.cartao='';csb();om(htmlLanc());setTimeout(function(){var e=document.getElementById('lcV');if(e)e.focus()},mob()?60:140)}
 function htmlLanc(){
   var bt=function(t,txt){return '<button class="tgl-o '+(LC.tipo===t?'on':'')+'" aria-pressed="'+(LC.tipo===t)+'" onclick="lcTipo(\''+t+'\')">'+txt+'</button>'};
-  var topo='<h3>Lançar</h3>'+'<div class="tgl" role="group" aria-label="Tipo de lançamento" style="margin-bottom:8px">'+bt('despesa','Pix ou débito')+bt('divida','Crédito')+bt('renda','Entrada')+'</div>';
+  var topo='<h3>Lançar</h3>'+'<div class="tgl" role="group" aria-label="Tipo de lançamento" style="margin-bottom:8px">'+bt('despesa','Pix ou débito')+bt('divida','Crédito')+bt('renda','Entrada')+bt('reserva','Reserva')+'</div>';
+  if(LC.tipo==='reserva'){var mv=LC.rm==='r'?'r':'g',bm=function(t,txt){return '<button type="button" class="tgl-o'+(mv===t?' on':'')+'" aria-pressed="'+(mv===t)+'" onclick="lcMov(this,\''+t+'\')">'+txt+'</button>'};
+    return topo+'<p class="ms">Guardar tira da sobra do mês e soma na reserva. Resgatar devolve o dinheiro para a sobra.</p>'+
+    '<div class="fd"><label>Movimento</label><div class="tgl">'+bm('g','Guardar')+bm('r','Resgatar')+'</div></div>'+
+    '<div class="fd"><label for="lcV">Valor</label><input type="text" id="lcV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" enterkeyhint="next" oninput="lcBotao()"></div>'+
+    '<div class="fd"><label>Reserva</label><div class="lc-grid" id="lcG" role="listbox" aria-label="Reservas">'+resBtns()+'</div></div>'+
+    '<div class="fd-row"><div class="fd"><label for="lcD">Data</label><input type="date" id="lcD" value="'+dataPadrao()+'"></div></div>'+
+    '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" id="lcOk" onclick="salvarLanc()">'+(mv==='r'?'Resgatar':'Guardar')+'</button></div>'}
   if(LC.tipo==='divida')return topo+'<p class="ms">Compra no cartão ou parcelada. Vira uma dívida: à vista é 1x. Cada parcela aparece em Contas, no mês dela, para marcar como paga.</p>'+
     '<div class="fd"><label for="lcV">Valor total</label><input type="text" id="lcV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" enterkeyhint="next" oninput="lcBotao()"></div>'+
     '<div class="fd"><label for="lcN">O que comprou</label><input type="text" id="lcN" class="inp" placeholder="Ex.: Perfume" autocomplete="off" enterkeyhint="next"></div>'+
@@ -2717,7 +2742,36 @@ function htmlLanc(){
 // o botao diz exatamente o que vai acontecer: "Lançar R$ 45,90"
 function lcBotao(){var b=document.getElementById('lcOk'),v=lerValor((document.getElementById('lcV')||{}).value);if(!b)return;
   if(LC.tipo==='divida'){var q=Math.max(1,Math.floor(Number((document.getElementById('lcQ')||{}).value)||1));b.textContent=v>0?(q===1?'Registrar 1x de '+fm(v):'Registrar '+q+'x de '+fm(Fin.r(Math.round(Fin.c(v)/q)))):'Registrar';return}
+  if(LC.tipo==='reserva'){var tx=LC.rm==='r'?'Resgatar':'Guardar';b.textContent=v>0?tx+' '+fm(v):tx;return}
   b.textContent=v>0?'Lançar '+fm(v):'Lançar'}
+// reservas: as que já existem (com o saldo até o mês) + as novas digitadas agora
+function resBtns(){
+  var lst=Fin.reservas(DB,DB.curYear,DB.mo),vistos={};
+  lst.forEach(function(x){vistos[Fin.normNome(x.nome)]=1});
+  LC.extras.forEach(function(n){if(!vistos[Fin.normNome(n)]){vistos[Fin.normNome(n)]=1;lst.push({nome:n,saldo:0,mov:0})}});
+  LC.lista=lst.map(function(x){return x.nome});
+  return lst.map(function(x,i){return '<button type="button" class="lc-cat'+(LC.cat===x.nome?' on':'')+'" role="option" aria-selected="'+(LC.cat===x.nome)+'" onclick="lcCat(this,'+i+')"><span class="e">'+icRes(x.nome)+'</span><span class="n">'+esc(x.nome)+'<small class="lc-sd">'+fm(x.saldo)+'</small></span></button>'}).join('')+
+    '<button type="button" class="lc-cat nova" role="option" aria-selected="false" onclick="lcNovaCat()">'+svg('plus')+'<span class="n">Nova reserva</span></button>';
+}
+// ícone da reserva pelo nome (o gi() geral classifica como despesa e cai no alfinete)
+function icRes(n){var t=semAcento(n);if(/viag|ferias/.test(t))return '✈️';if(/poupan/.test(t))return '🐷';if(/casa|reforma|movel/.test(t))return '🏠';if(/carro|moto/.test(t))return '🚗';if(/presente|natal/.test(t))return '🎁';if(/estud|curso|facul/.test(t))return '🎓';return '🛡️'}
+function lcMov(el,t){LC.rm=t;var b=el.parentElement.querySelectorAll('.tgl-o');for(var i=0;i<b.length;i++){b[i].classList.remove('on');b[i].setAttribute('aria-pressed','false')}el.classList.add('on');el.setAttribute('aria-pressed','true');lcBotao()}
+function abrirLancReserva(mv,nome){abrirLanc();LC.rm=mv==='r'?'r':'g';lcTipo('reserva');
+  if(nome){if(LC.lista.indexOf(nome)<0)LC.extras.push(nome);LC.cat=nome;document.getElementById('lcG').innerHTML=resBtns()}
+  var e=document.getElementById('lcV');if(e)setTimeout(function(){e.focus()},mob()?60:140)}
+function salvarReservaLanc(){
+  var v=lerValor(document.getElementById('lcV').value);
+  if(v===null||v<=0){erroCampo('lcV','Informe o valor (ex.: 500,00).');return}
+  if(!LC.cat){erroCampo('lcG','Escolha a reserva ou crie uma nova.');return}
+  var dt=document.getElementById('lcD').value||dataPadrao(),p=dt.split('-');
+  if(p.length!==3){erroCampo('lcD','Data inválida.');return}
+  var ano=String(Number(p[0])),mes=Number(p[1])-1,sin=LC.rm==='r'?-1:1,nome=LC.cat;
+  var res=Fin.moverReserva(DB,ano,mes,nome,sin*v);
+  if(!res.ok){erroCampo(sin<0?'lcV':'lcD',esc(res.erro));return}
+  cmo();
+  toast((sin>0?'Guardado em ':'Resgatado de ')+nome+' · '+fm(v),function(){res.item.values[mes]=res.antes;toast('Desfeito · '+nome);R()});
+  R();
+}
 function lcEnter(e){if(e.key!=='Enter')return;e.preventDefault();if(LC.cat)salvarLanc();else{var f=document.getElementById('lcF');if(f)f.focus()}}
 function semAcento(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}
 // ordem: mais lancadas no mes > maior valor previsto no mes > alfabetica
@@ -2770,19 +2824,20 @@ function lcCat(el,i){
   var er=document.getElementById('fdErr');if(er)er.remove();
 }
 function lcNovaCat(){
-  document.getElementById('lcG').innerHTML='<div class="lc-nc"><input type="text" id="lcNC" class="inp" placeholder="Nome da categoria" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();lcConfCat()}"><button type="button" class="btn btn-p" style="flex:0 0 auto" onclick="lcConfCat()">Usar</button></div>';
+  document.getElementById('lcG').innerHTML='<div class="lc-nc"><input type="text" id="lcNC" class="inp" placeholder="'+(LC.tipo==='reserva'?'Ex.: Viagem da Lais':'Nome da categoria')+'" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();lcConfCat()}"><button type="button" class="btn btn-p" style="flex:0 0 auto" onclick="lcConfCat()">Usar</button></div>';
   setTimeout(function(){var e=document.getElementById('lcNC');if(e)e.focus()},60);
 }
 function lcConfCat(){
   var v=(document.getElementById('lcNC').value||'').trim();
-  if(!v){erroCampo('lcNC','Digite o nome da categoria.');return}
+  if(!v){erroCampo('lcNC',LC.tipo==='reserva'?'Digite o nome da reserva.':'Digite o nome da categoria.');return}
   if(LC.extras.indexOf(v)<0)LC.extras.push(v);
   LC.cat=v;
   var f=document.getElementById('lcF');if(f)f.value='';
-  document.getElementById('lcG').innerHTML=catBtns();
+  document.getElementById('lcG').innerHTML=LC.tipo==='reserva'?resBtns():catBtns();
 }
 function salvarLanc(){
   if(LC.tipo==='divida'){salvarDividaLanc();return}
+  if(LC.tipo==='reserva'){salvarReservaLanc();return}
   var v=lerValor(document.getElementById('lcV').value);
   if(v===null||v<=0){erroCampo('lcV','Informe o valor (ex.: 45,90).');return}
   if(!LC.cat){erroCampo('lcF','Escolha a categoria.');return}
