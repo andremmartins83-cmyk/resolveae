@@ -2773,7 +2773,7 @@ function faltaPagarC(m){var y=Y(),f=0;
 function rendasConf(m){return Y().renda.filter(function(r){return (r.values[m]||0)>0&&Fin.normNome(r.name)!==Fin.normNome(NOME_DIF)})}
 function abrirConfBanco(){var m=DB.mo,mes=MN[m].toLowerCase(),rs=rendasConf(m),fp=faltaPagarC(m);
   om('<h3>Conferir com o banco</h3><p class="ms">O saldo de '+mes+' é o que vai sobrar no fim do mês. Diga quanto tem hoje e o que ainda vai cair; o app acerta a diferença.</p>'+
-  '<div class="fd"><label for="cbV">Quanto tem agora nas contas</label><input type="text" id="cbV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" oninput="cbCalc()"><div class="fd-h">Some todas as contas do casal. Não conte as caixinhas da reserva.</div></div>'+
+  '<div class="fd"><label for="cbV">Quanto tem agora nas contas</label><input type="text" id="cbV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" oninput="cbCalc()"><div class="fd-h">Some as contas do casal e o saldo dos cartões de benefício (vale e transporte), que também entram como renda. Não conte as caixinhas da reserva.</div></div>'+
   '<div class="fd"><label>Marque o que ainda vai cair na conta até o fim de '+mes+'</label><div class="cb-lst">'+(rs.length?rs.map(function(r,i){return '<label class="cb-r"><input type="checkbox" id="cbR'+i+'" data-v="'+Fin.c(r.values[m])+'" onchange="cbCalc()"><span>'+esc(r.name)+'</span><b>'+fm(r.values[m])+'</b></label>'}).join(''):'<p class="fd-h">Nenhuma entrada prevista em '+mes+'.</p>')+'</div></div>'+
   '<div class="cb-r cb-fx"><span>Ainda falta pagar em '+mes+'</span><b>- '+fm(Fin.r(fp))+'</b></div>'+
   '<div class="ins" id="cbRes" role="status"><span class="em">'+svg('info')+'</span>Digite o valor que tem nas contas.</div>'+
