@@ -204,6 +204,8 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 .grp>summary:hover{color:var(--tx)}
 .lst-f{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--bl);background:var(--ap2);font-size:12.5px;color:var(--t2)}
 .lst-f b{font-family:var(--mono);color:var(--tx);font-size:14px;font-variant-numeric:tabular-nums}
+.lst-tot{color:var(--tx);font-weight:600}.lst-tot b{font-size:15px}
+.tot-r td,.tot-s td{border-top:1px solid var(--bl);background:var(--ap2)}
 .vazio{padding:36px 20px;text-align:center;color:var(--t2);font-size:13px}
 .vazio .i{width:30px;height:30px;color:var(--b5);margin:0 auto 10px;stroke-width:1.6}
 .vazio b{display:block;color:var(--tx);font-size:15px;font-weight:700;margin-bottom:3px}
@@ -1328,7 +1330,7 @@ function pgD(m){
   var base=Math.max(rT,t.despesas,1),wD=Math.max(0,t.despProprias)/base*100,wP=Math.max(0,t.parcelas)/base*100;
   h+='<div class="regua" role="img" aria-label="Despesas '+fm(t.despProprias)+', parcelas '+fm(t.parcelas)+', '+(s>=0?'sobra '+fm(s):'falta '+fm(-s))+'"><i class="rg-d" style="width:'+wD.toFixed(2)+'%"></i><i class="rg-p" style="width:'+wP.toFixed(2)+'%"></i>'+(gu>0?'<i class="rg-r" style="width:'+(gu/base*100).toFixed(2)+'%"></i>':'')+(s<0?'<i class="rg-x" style="position:absolute;right:0;top:0;width:'+(Math.min(100,-s/base*100)).toFixed(2)+'%"></i>':'')+'</div>';
   h+='<div class="regua-l"><span><i class="sw d"></i>Despesas <b>'+fm(t.despProprias)+'</b></span><span><i class="sw p"></i>Parcelas de dívida <b>'+fm(t.parcelas)+'</b></span>'+(gu>0?'<span><i class="sw r"></i>Guardado <b>'+fm(gu)+'</b></span>':'')+(s>=0?'<span><i class="sw s"></i>Sobra <b>'+fm(s)+'</b></span>':'<span><i class="sw x"></i>Falta <b>'+fm(-s)+'</b></span>')+'</div>';
-  var hs='<div class="stats"><div><div class="sx-l">Renda de '+mes+'</div><div class="sx-v ok">'+fm(t.renda)+'</div><div class="sx-s">'+(t.rendaExtra>0?'inclui '+fm(Fin.r(Fin.c(t.rendaExtra)-0))+' de extras · ':'')+(t.rendaFinanc>0?fm(t.rendaFinanc)+' de empréstimo · ':'')+(cr>0?'+ '+fm(cr)+' de '+mAnt:cr<0?fm(cr)+' de '+mAnt:'sem sobra anterior')+'</div></div>';
+  var hs='<div class="stats"><div><div class="sx-l">Renda + sobra</div><div class="sx-v ok">'+fm(rT)+'</div><div class="sx-s">renda de '+mes+' '+fm(t.renda)+(t.rendaExtra>0?' (inclui '+fm(t.rendaExtra)+' de extras)':'')+' · '+(cr>0?'+ '+fm(cr)+' de '+mAnt:cr<0?fm(cr)+' de '+mAnt:'sem sobra anterior')+'</div></div>';
   hs+='<div><div class="sx-l">Despesas</div><div class="sx-v">'+fm(t.despProprias)+'</div><div class="sx-s">'+nf+' fixas · '+nv+' variáveis</div></div>';
   hs+='<div><div class="sx-l">Parcelas de dívida</div><div class="sx-v">'+fm(t.parcelas)+'</div><div class="sx-s">'+plural(pm2.length,'parcela')+' · '+pcd.toFixed(0)+'% da renda</div></div>';
   hs+='<div><div class="sx-l">Reserva acumulada</div><div class="sx-v">'+fm(re)+'</div><div class="sx-s">até '+SH[m]+'/'+esc(DB.curYear)+'</div></div></div>';
@@ -1533,6 +1535,10 @@ function vTB(type,m,title){
     if(UI.verEnc)foraT.forEach(function(it){var tot=0;it.values.forEach(function(v){tot+=Fin.c(v||0)});h+='<tr class="enc lin-ed" data-acao="edc" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+m+'"><td class="cn"><div class="nm"><span class="ic">'+gi(it.name)[0]+'</span><span>'+esc(it.name)+'</span></div></td>'+(hasTipo?'<td></td>':'');
       for(var i=0;i<12;i++){var v=it.values[i];h+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv '+(v>0?'b':'ze')+'" '+(type==='despesas'?'data-acao="eU" data-id="'+esc(it.id)+'" data-m="'+i+'"':'data-acao="eVR" data-tipo="'+type+'" data-id="'+esc(it.id)+'" data-m="'+i+'"')+' role="button" tabindex="0">'+(v>0?fm(v):'—')+'</span></td>'}
       h+='<td class="r tt"><span class="cv b">'+fm(Fin.r(tot))+'</span></td><td></td></tr>'})}
+  // total do mês = renda + sobra do mês anterior (o mesmo que o motor usa no saldo)
+  if(type==='renda'){var lR='<tr class="tot-r"><td class="cn"><b>Renda do mês</b></td>'+(hasTipo?'<td></td>':''),lS='<tr class="tot-s"><td class="cn"><b>Total com a sobra</b></td>'+(hasTipo?'<td></td>':''),aR=0;
+    for(var i=0;i<12;i++){var tr0=T(i);aR+=Fin.c(tr0.renda);lR+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv b">'+fm(tr0.renda)+'</span></td>';lS+='<td class="r '+(i===m?'mhi':'')+'"><span class="cv b">'+fm(Fin.r(Fin.c(tr0.renda)+Fin.c(tr0.sobraAnterior)))+'</span></td>'}
+    h+=lR+'<td class="r tt"><span class="cv b">'+fm(Fin.r(aR))+'</span></td><td></td></tr>'+lS+'<td class="r tt"></td><td></td></tr>'}
   h+='</tbody></table></div></div>';
   if(false)h+='<p class="fd-h" style="margin:-8px 0 16px">Linhas marcadas como <strong>Dívida</strong> vêm do plano de cada dívida: o valor muda na página Dívidas.</p>';
   if(type==='despesas')h+=avisoCartoes();
@@ -1560,8 +1566,11 @@ function vTBMes(type,m,title,filt,hasTipo,fKey,novo){
     tot+=tp}
 
   if(enc.length)h+=grp('de-enc','Encerradas em '+mes,plural(enc.length,'conta'),function(){return '<ul class="lst">'+enc.map(function(it){return linhaDesp(it,m,{enc:1,semFim:1,acao:ac,tipoItem:type})}).join('')+'</ul>'});
-  if(type==='renda'){var c=carry(m);h+='<div class="lst-f"><span>Sobra do mês anterior</span><b style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+fm(c)+'</b></div>'}
-  h+='<div class="lst-f"><span>Total de '+mes+'</span><b>'+fm(Fin.r(tot))+'</b></div>';
+  if(type==='renda'){var c=carry(m),mA=MN[(m+11)%12].toLowerCase();
+    h+='<div class="lst-f"><span>Renda de '+mes+'</span><b>'+fm(Fin.r(tot))+'</b></div>';
+    h+='<div class="lst-f"><span>Sobra de '+mA+'</span><b style="color:'+(c<0?'var(--r6)':'var(--b6)')+'">'+(c>0?'+ ':'')+fm(c)+'</b></div>';
+    h+='<div class="lst-f lst-tot"><span>Total com a sobra</span><b>'+fm(Fin.r(tot+Fin.c(c)))+'</b></div>'}
+  else h+='<div class="lst-f"><span>Total de '+mes+'</span><b>'+fm(Fin.r(tot))+'</b></div>';
   if(type==='despesas')h+=avisoCartoes();
   if(type==='reserva')h+='<div class="lst-f"><span>Acumulada até '+SH[m]+'</span><b>'+fm(accRe(m))+'</b></div>';
   h+='</section></div>';
