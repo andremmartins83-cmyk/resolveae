@@ -180,14 +180,17 @@
     }
     if (!fim && a.parcelas.length) fim = a.ultimoPag && a.ultimoPag < a.parcelas[a.parcelas.length - 1].ym ? a.ultimoPag : a.parcelas[a.parcelas.length - 1].ym;
     var status;
-    if (dv.situacao === 'encerrada') status = 'encerrada';
+    var quit = dv.situacao === 'encerrada' ? Fin.quitacaoDe(dv) : null;
+    if (quit) { status = 'quitada'; proxima = null; fim = quit.ym; atrasadas = 0; }
+    else if (dv.situacao === 'encerrada') status = 'encerrada';
     else if (dv.situacao === 'radar') status = 'radar';
     else if (a.quitada) status = 'quitada';
     else if (atrasadas > 0) status = 'atrasada';
     else status = 'em-dia';
     return {
-      totalPago: r(a.totalPagoC), saldo: r(a.saldoC), quitada: a.quitada, status: status,
-      pagas: pagas, restantes: a.parcelas.length - pagas, proxima: dv.situacao === 'radar' ? null : proxima,
+      totalPago: r(a.totalPagoC), saldo: quit ? 0 : r(a.saldoC), quitada: a.quitada || !!quit, status: status,
+      quitacao: quit ? { ym: quit.ym, valor: quit.valor, desconto: r(a.saldoC) } : null,
+      pagas: quit ? a.parcelas.length : pagas, restantes: quit ? 0 : a.parcelas.length - pagas, proxima: dv.situacao === 'radar' ? null : proxima,
       fimPrevisto: dv.situacao === 'radar' ? null : fim, atrasadas: atrasadas,
       inconsistencias: a.inconsistencias
     };
@@ -253,6 +256,43 @@
     if (c(valor) <= 0) throw new Error('Valor da amortização deve ser maior que zero.');
     if (!dv.pagamentos || typeof dv.pagamentos !== 'object') dv.pagamentos = {};
     dv.pagamentos[alvo] = r(c(dv.pagamentos[alvo]) + c(valor));
+    return dv;
+  };
+
+  // Quitação antecipada: paga um valor (em geral menor que o saldo, com desconto de juros) num mês.
+  // O valor sai do caixa daquele mês; as parcelas seguintes somem; o histórico fica.
+  // Marca guardada em flags ('quitacao|AAAA-MM|valor|pagoAntesNoMes') porque a planilha não aceita campo novo.
+  var QUIT = 'quitacao|';
+  Fin.quitacaoDe = function (dv) {
+    var fs = (dv && Array.isArray(dv.flags)) ? dv.flags : [];
+    for (var i = 0; i < fs.length; i++) {
+      var f = String(fs[i]);
+      if (f.indexOf(QUIT) !== 0) continue;
+      var p = f.split('|');
+      if (!ymParse(p[1])) continue;
+      return { ym: p[1], valor: r(c(Number(p[2]) || 0)), anterior: r(c(Number(p[3]) || 0)) };
+    }
+    return null;
+  };
+  Fin.quitar = function (dv, alvo, valor) {
+    if (!ymParse(alvo)) throw new Error('Competência inválida: ' + alvo);
+    if (c(valor) <= 0) throw new Error('Informe o valor pago na quitação.');
+    if (Fin.quitacaoDe(dv)) throw new Error('Esta dívida já foi quitada.');
+    if (!dv.pagamentos || typeof dv.pagamentos !== 'object') dv.pagamentos = {};
+    if (!Array.isArray(dv.flags)) dv.flags = [];
+    var antC = c(dv.pagamentos[alvo]);
+    dv.pagamentos[alvo] = r(antC + c(valor));
+    dv.flags.push(QUIT + alvo + '|' + r(c(valor)) + '|' + r(antC));
+    dv.situacao = 'encerrada';
+    return dv;
+  };
+  Fin.desfazerQuitacao = function (dv) {
+    var q = Fin.quitacaoDe(dv);
+    if (!q) return dv;
+    if (!dv.pagamentos || typeof dv.pagamentos !== 'object') dv.pagamentos = {};
+    if (c(q.anterior) > 0) dv.pagamentos[q.ym] = q.anterior; else delete dv.pagamentos[q.ym];
+    dv.flags = dv.flags.filter(function (f) { return String(f).indexOf(QUIT) !== 0; });
+    dv.situacao = (Number(dv.qtd) > 0 && c(dv.parcela) > 0 && ymParse(dv.inicio)) ? 'ativa' : 'radar';
     return dv;
   };
 

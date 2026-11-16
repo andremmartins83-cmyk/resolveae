@@ -465,17 +465,19 @@ tr.auto td,tr.auto td.cn{background:var(--b50)}
 .dv-plano strong{color:var(--tx);font-weight:600}
 .dv-obs{font-size:12.5px;color:var(--t2);line-height:1.5;background:var(--ap2);border-radius:8px;padding:7px 10px;margin:4px 0 6px;overflow-wrap:anywhere}
 .dv-flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.dv-busca{margin:0 0 14px}.dv-busca .inp{width:100%;max-width:420px}
 .dv-flag{font-size:11px;font-weight:600;background:var(--o50);color:var(--o6);padding:3px 8px;border-radius:6px}
 .dv-actions{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:8px}
 .dv-btn{min-height:40px;padding:0 14px;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--bd);background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .dv-btn:hover{border-color:var(--t3)}
-.dv-btn-p{flex:1;background:var(--b6);border-color:var(--b6);color:#fff}
+.dv-btn-p{flex:1;min-width:0;background:var(--b6);border-color:var(--b6);color:#fff}
 .dv-btn-p:hover{background:#26311E;border-color:#26311E}
 .dv-btn-p .mono{font-weight:600;opacity:.85}
 .dv-btn-s{flex:1}
 .dv-btn-resolve{background:var(--b50);border-color:var(--b50);color:var(--b6)}
 .dv-btn-edit{background:var(--ap);border-color:var(--ap);color:var(--t2)}
 .dv-btn-del{background:var(--r50);border-color:var(--r50);color:var(--r6)}
+.dv-card .dv-quit{flex:0 0 auto;padding:0 12px}
 .dv-more{width:40px;padding:0;margin-left:auto;flex-shrink:0;color:var(--t2)}
 .dv-more .i{width:18px;height:18px}
 .dv-card .dv-more{margin-left:0}
@@ -1941,6 +1943,8 @@ var ACOES={
   'dv-hist':function(d){historicoDivida(d.dv)},
   'dv-edit':function(d){formDivida(d.dv)},
   'dv-enc':function(d){encerrarDivida(d.dv)},
+  'dv-quit':function(d){quitarDivida(d.dv)},
+  'dv-desq':function(d){desfazerQuitacaoUI(d.dv)},
   'dv-reab':function(d){reabrirDivida(d.dv)},
   'dv-del':function(d){delDivida(d.dv)},
   'dv-desf':function(d){desfazerHist(d.dv,d.ym)},
@@ -2044,8 +2048,8 @@ var DV_ROT={'em-dia':'Em dia','atrasada':'Atrasada','quitada':'Quitada','radar':
 function somaC(l,f){var t=0;l.forEach(function(x){t+=Fin.c(Number(f(x))||0)});return Fin.r(t)}
 // Cartao enxuto: a acao principal visivel, o resto no menu "⋯"
 function cardDivida(x){
-  var dv=x.dv,r=x.r,st=r.status,id=esc(dv.id),total=Number(dv.total)||0,pct=total>0?Math.min(100,r.totalPago/total*100):0,plano=Number(dv.qtd)>0&&dv.inicio;
-  var flags=(dv.flags||[]).concat(r.inconsistencias||[]),vistos={};
+  var dv=x.dv,r=x.r,st=r.status,id=esc(dv.id),total=Number(dv.total)||0,pct=r.quitacao?100:total>0?Math.min(100,r.totalPago/total*100):0,plano=Number(dv.qtd)>0&&dv.inicio;
+  var flags=(dv.flags||[]).filter(function(f){return String(f).indexOf('quitacao|')!==0}).concat(r.inconsistencias||[]),vistos={};
   var h='<article class="dv-card" data-dvcard="'+id+'"><div data-acao="dv-edit" data-dv="'+id+'" role="button" tabindex="0" style="cursor:pointer">';
   h+='<div class="dv-head"><div style="min-width:0;display:flex;gap:10px;align-items:center"><span class="ic">'+giDiv(dv)+'</span><div style="min-width:0"><div class="dv-name">'+esc(dv.name)+'</div><div class="dv-credor">'+esc(dv.credor||'Sem credor')+(dv.venc?' · '+esc(vencTxt(dv.venc)):'')+'</div></div></div></div>';
   h+='<span class="dv-badge '+st+'">'+(DV_ROT[st]||esc(st))+(st==='atrasada'&&r.atrasadas?' · '+r.atrasadas:'')+'</span></div>';
@@ -2055,14 +2059,16 @@ function cardDivida(x){
   if(plano)h+='<div><div class="dv-l">Parcela</div><div class="dv-v">'+fm(dv.parcela)+'</div></div><div class="r"><div class="dv-l">Pagas</div><div class="dv-v">'+r.pagas+'/'+dv.qtd+'</div></div>';
   else h+='<div class="r"><div class="dv-l">Total</div><div class="dv-v">'+fm(total)+'</div></div>';
   h+='</div><div class="dv-progress" role="img" aria-label="'+pct.toFixed(0)+'% pago"><div class="dv-progress-fill '+st+'" style="width:'+pct.toFixed(1)+'%"></div></div>';
-  if(plano)h+='<div class="dv-plano">'+(r.proxima?'Próxima <strong>'+ymTxt(r.proxima.ym)+'</strong> · ':'')+'fim previsto <strong>'+ymTxt(r.fimPrevisto)+'</strong><br>Total '+fm(total)+' · pago '+fm(r.totalPago)+'</div>';
+  if(r.quitacao)h+='<div class="dv-plano">Quitada em <strong>'+ymTxt(r.quitacao.ym)+'</strong> por <strong>'+fm(r.quitacao.valor)+'</strong>'+(r.quitacao.desconto>0?' · desconto <strong>'+fm(r.quitacao.desconto)+'</strong>':'')+'<br>Total pago '+fm(r.totalPago)+'</div>';
+  else if(plano)h+='<div class="dv-plano">'+(r.proxima?'Próxima <strong>'+ymTxt(r.proxima.ym)+'</strong> · ':'')+'fim previsto <strong>'+ymTxt(r.fimPrevisto)+'</strong><br>Total '+fm(total)+' · pago '+fm(r.totalPago)+'</div>';
   else h+='<div class="dv-plano">'+(Number(dv.pagoInicial)>0?'Já pago antes do plano: <strong>'+fm(dv.pagoInicial)+'</strong>':'Pago '+fm(r.totalPago))+(dv.situacao==='radar'?' · sem plano de pagamento':'')+'</div>';
   if(dv.obs)h+='<div class="dv-obs">'+esc(dv.obs)+'</div>';
   h+='<div class="dv-actions">';
   if(dv.situacao==='radar')h+='<button class="dv-btn dv-btn-p" data-acao="dv-plano" data-dv="'+id+'">'+svg('cal')+'Ativar plano</button>';
-  else if(dv.situacao!=='encerrada'&&st!=='quitada'&&r.proxima)h+='<button class="dv-btn dv-btn-p" data-acao="pp" data-dv="'+id+'" data-ym="'+esc(r.proxima.ym)+'">Pagar '+ymTxt(r.proxima.ym)+' <span class="mono">'+fm(r.proxima.falta)+'</span></button>';
+  else if(dv.situacao!=='encerrada'&&st!=='quitada'&&r.proxima)h+='<button class="dv-btn dv-btn-p" data-acao="pp" data-dv="'+id+'" data-ym="'+esc(r.proxima.ym)+'">Pagar '+(r.proxima.ym.slice(0,4)===String(DB.curYear)?SH[Number(r.proxima.ym.slice(5))-1]:ymTxt(r.proxima.ym))+' <span class="mono">'+fm(r.proxima.falta)+'</span></button>';
   else if(dv.situacao!=='encerrada'&&st!=='quitada')h+='<button class="dv-btn dv-btn-s" data-acao="dv-pagar" data-dv="'+id+'">'+svg('pay')+'Registrar pagamento</button>';
   else h+='<button class="dv-btn dv-btn-s" data-acao="dv-hist" data-dv="'+id+'">'+svg('hist')+'Histórico</button>';
+  if(dv.situacao==='ativa'&&st!=='quitada'&&r.restantes>1)h+='<button class="dv-btn dv-btn-s dv-quit" data-acao="dv-quit" data-dv="'+id+'">Quitar</button>';
   h+='<button class="dv-btn dv-more" data-acao="dv-menu" data-dv="'+id+'" aria-label="Mais ações: '+esc(dv.name)+'" aria-haspopup="menu" aria-expanded="false">'+svg('more')+'</button>';
   return h+'</div></article>';
 }
@@ -2075,7 +2081,9 @@ function menuDivida(id,el){
   h+=it('dv-hist','hist','Histórico de pagamentos');
   h+=it('dv-edit','edit','Editar dívida');
   if(dv.situacao==='ativa')h+=it('dv-plano','cal','Plano de pagamento');
-  h+=dv.situacao==='encerrada'?it('dv-reab','undo','Reabrir'):(r.status==='quitada'?'':it('dv-enc','stop','Encerrar'));
+  if(Fin.quitacaoDe(dv)&&dv.situacao==='encerrada')h+=it('dv-desq','undo','Desfazer quitação');
+  else{if(dv.situacao==='ativa'&&r.status!=='quitada')h+=it('dv-quit','ok','Quitar (pagar o saldo)');
+  h+=dv.situacao==='encerrada'?it('dv-reab','undo','Reabrir'):(r.status==='quitada'?'':it('dv-enc','stop','Encerrar'))}
   h+='<div class="mnu-sep"></div>'+it('dv-del','trash','Excluir',1);
   abrirMenu(el,h,dv.name);
 }
@@ -2098,11 +2106,16 @@ function pgDiv(m){
   var hj=hojeYM(),todas=DB.dividas.map(function(dv){return{dv:dv,r:Fin.divResumo(dv,hj)}});
   var ehAV=function(x){return Number(x.dv.qtd)===1&&x.dv.situacao!=='radar'},nAV=todas.filter(ehAV).length,aba=UI.divAba==='av'?'av':'pa';
   var lst=todas.filter(function(x){return aba==='av'?ehAV(x):!ehAV(x)});
+  var bq=semAcento(UI.dvBusca||'').trim();
   var abas='<div class="fpills" role="group" aria-label="Tipo de dívida" style="margin-bottom:14px"><button class="fpill '+(aba==='pa'?'on':'')+'" onclick="UI.divAba=\'pa\';R()">Parceladas · '+(todas.length-nAV)+'</button><button class="fpill '+(aba==='av'?'on':'')+'" onclick="UI.divAba=\'av\';R()">À vista (1x) · '+nAV+'</button></div>';
-  var ativas=lst.filter(function(x){return x.dv.situacao==='ativa'}),radar=lst.filter(function(x){return x.dv.situacao==='radar'}),enc=lst.filter(function(x){return x.dv.situacao==='encerrada'});
-  var abertas=ativas.filter(function(x){return x.r.status!=='quitada'}),nQuit=ativas.length-abertas.length;
+  var ativas=lst.filter(function(x){return x.dv.situacao==='ativa'}),radar=lst.filter(function(x){return x.dv.situacao==='radar'}),enc=lst.filter(function(x){return x.dv.situacao==='encerrada'&&x.r.status!=='quitada'}),quitEnc=lst.filter(function(x){return x.dv.situacao==='encerrada'&&x.r.status==='quitada'});
+  var abertas=ativas.filter(function(x){return x.r.status!=='quitada'}),nQuit=ativas.length-abertas.length+quitEnc.length;
   var t=T(DB.mo),pcd=pctTxt(t.comprometimentoDividas),nAtr=ativas.filter(function(x){return x.r.status==='atrasada'}).length;
   var h='<div class="pg on"><div class="ph"><div class="pt">Dívidas<small>'+plural(abertas.length,'em aberto','em aberto')+(nQuit?' · '+plural(nQuit,'quitada'):'')+(radar.length?' · '+radar.length+' no radar':'')+(enc.length?' · '+plural(enc.length,'encerrada'):'')+'</small></div><button class="ab" onclick="formDivida()">'+svg('plus')+'Nova dívida</button></div>'+abas;
+  h+='<div class="dv-busca"><input type="search" id="dvBusca" class="inp" placeholder="Buscar dívida pelo nome ou credor" aria-label="Buscar dívida" value="'+esc(UI.dvBusca||'')+'" oninput="buscaDiv(this.value)"></div>';
+  if(bq){var ach=todas.filter(function(x){var tx=semAcento(x.dv.name+' '+(x.dv.credor||''));return bq.split(/\s+/).every(function(w){return tx.indexOf(w)>=0})});
+    h+='<section class="card dv-lista"><div class="card-h"><h2>'+plural(ach.length,'dívida encontrada','dívidas encontradas')+'</h2></div>'+(ach.length?'<div class="dv-grid" style="padding:12px">'+ach.map(cardDivida).join('')+'</div>':'<div class="vazio">Nada com "'+esc(UI.dvBusca)+'".</div>')+'</section>';
+    return h+'</div>'}
   h+='<div class="stats">';
   h+='<div><div class="sx-l">Saldo devedor</div><div class="sx-v al" id="dvSaldo">'+fm(somaC(abertas,function(x){return x.r.saldo}))+'</div><div class="sx-s">das dívidas em aberto</div></div>';
   h+='<div><div class="sx-l">Parcelas de '+SH[DB.mo]+'</div><div class="sx-v">'+fm(t.parcelas)+'</div><div class="sx-s">'+pcd.toFixed(0)+'% da renda</div></div>';
@@ -2122,7 +2135,7 @@ function pgDiv(m){
     ['dv-atrasada','Atrasadas',ativas.filter(function(x){return x.r.status==='atrasada'}).sort(function(a,b){return b.r.atrasadas-a.r.atrasadas})],
     ['dv-em-dia','Em dia',ativas.filter(function(x){return x.r.status==='em-dia'}).sort(function(a,b){return proxYM(a)<proxYM(b)?-1:proxYM(a)>proxYM(b)?1:0})],
     ['dv-radar','No radar · fora do saldo devedor',radar],
-    ['dv-quitada','Quitadas',ativas.filter(function(x){return x.r.status==='quitada'})],
+    ['dv-quitada','Quitadas',ativas.filter(function(x){return x.r.status==='quitada'}).concat(quitEnc)],
     ['dv-encerrada','Encerradas',enc]];
   h+='<section class="card dv-lista">';
   gr.forEach(function(g){if(!g[2].length)return;var sd=somaC(g[2],function(x){return x.r.saldo});
@@ -2167,7 +2180,7 @@ function formDivida(id,ym){
   '<div class="fd"><label for="dvPagoIni">Já pago antes ou fora do app (R$)</label><input type="text" inputmode="decimal" id="dvPagoIni" class="inp" value="'+(dv?vIn(dv.pagoInicial):'0')+'"></div>'+
   '<div class="fd"><label for="dvVenc">Vencimento</label><input type="text" id="dvVenc" class="inp" value="'+esc(dv?dv.venc:'')+'" placeholder="Ex.: Dia 10"></div>'+
   '<div class="fd"><label for="dvObs">Observação</label><textarea id="dvObs">'+esc(dv?dv.obs:'')+'</textarea></div>';
-  if(dv)h+='<div class="ed-acoes">'+(rs&&rs.status==='quitada'&&dv.situacao!=='encerrada'?'':dv.situacao==='encerrada'?'<button type="button" class="lk" data-acao="dv-reab" data-dv="'+esc(dv.id)+'">'+svg('undo')+'Reabrir dívida</button>':'<button type="button" class="lk" data-acao="dv-enc" data-dv="'+esc(dv.id)+'">'+svg('stop')+'Encerrar dívida</button>')+'<button type="button" class="lk" data-acao="dv-hist" data-dv="'+esc(dv.id)+'">'+svg('hist')+'Histórico de pagamentos</button></div>';
+  if(dv)h+='<div class="ed-acoes">'+(dv.situacao==='ativa'&&!(rs&&rs.status==='quitada')?'<button type="button" class="lk" data-acao="dv-quit" data-dv="'+esc(dv.id)+'">'+svg('ok')+'Quitar dívida</button>':'')+(Fin.quitacaoDe(dv)&&dv.situacao==='encerrada'?'<button type="button" class="lk" data-acao="dv-desq" data-dv="'+esc(dv.id)+'">'+svg('undo')+'Desfazer quitação</button>':rs&&rs.status==='quitada'&&dv.situacao!=='encerrada'?'':dv.situacao==='encerrada'?'<button type="button" class="lk" data-acao="dv-reab" data-dv="'+esc(dv.id)+'">'+svg('undo')+'Reabrir dívida</button>':'<button type="button" class="lk" data-acao="dv-enc" data-dv="'+esc(dv.id)+'">'+svg('stop')+'Encerrar dívida</button>')+'<button type="button" class="lk" data-acao="dv-hist" data-dv="'+esc(dv.id)+'">'+svg('hist')+'Histórico de pagamentos</button></div>';
   h+='<div class="mac">'+(dv?'<button class="btn btn-g" data-acao="dv-del" data-dv="'+esc(dv.id)+'">'+svg('trash')+'Excluir</button>':'')+'<button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="saveDivida()">'+(dv?'Salvar':'Adicionar')+'</button></div>';
   om(h);edVis();
   if(!dv)setTimeout(function(){var e=document.getElementById('dvNome');if(e)e.focus()},100);
@@ -2263,6 +2276,40 @@ function desfazerHist(id,ym){
 function encerrarDivida(id){
   var dv=acharDiv(id);if(!dv)return;
   confirmar('Encerrar dívida?','<strong>'+esc(dv.name)+'</strong> sai do saldo devedor e as parcelas deixam de aparecer nas despesas. O histórico fica guardado e dá para reabrir.','Encerrar',function(){dv.situacao='encerrada';toast('Dívida encerrada');R()});
+}
+function semAcento(t){return String(t||'').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'')}
+function buscaDiv(v){UI.dvBusca=v;R();var e=document.getElementById('dvBusca');if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}}
+// Quitação antecipada: o valor pago (com desconto) sai do mês escolhido; as parcelas seguintes somem
+var QTF={};
+function quitarDivida(id){
+  var dv=acharDiv(id);if(!dv)return;fecharMenu();QTF={id:dv.id};
+  var r=Fin.divResumo(dv,hojeYM()),ym=hojeYM();
+  om('<h3>Quitar dívida</h3><p class="ms">'+esc(dv.name)+' · saldo no plano '+fm(r.saldo)+(r.restantes?' ('+plural(r.restantes,'parcela')+')':'')+'</p>'+
+  '<div class="fd"><label for="qtV">Valor pago na quitação (R$)</label><input type="text" inputmode="decimal" id="qtV" class="inp" value="" placeholder="'+vIn(r.saldo)+'" oninput="qtPrev()"><div class="fd-h">O valor que o banco cobrou para quitar, já com o desconto dos juros.</div></div>'+
+  '<div class="fd"><label>Mês do pagamento</label>'+selYM('qtC',ym)+'</div>'+
+  '<div class="ins" id="qtR"></div>'+
+  '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" onclick="saveQuitar()">Quitar</button></div>');
+  qtPrev();
+}
+function qtPrev(){
+  var dv=acharDiv(QTF.id),el=document.getElementById('qtR');if(!dv||!el)return;
+  var r=Fin.divResumo(dv,hojeYM()),v=lerValor(document.getElementById('qtV').value);
+  if(v===null||v<=0){el.innerHTML='Digite o valor pago. As parcelas seguintes deixam de aparecer e o valor sai da sobra do mês.';return}
+  var d=Fin.r(Fin.c(r.saldo)-Fin.c(v));
+  el.innerHTML=d>0?'Desconto de <strong>'+fm(d)+'</strong> sobre o saldo do plano. Sai '+fm(v)+' da sobra do mês e as parcelas seguintes somem.':'Sai '+fm(v)+' da sobra do mês e as parcelas seguintes somem.';
+}
+function saveQuitar(){
+  var dv=acharDiv(QTF.id);if(!dv)return;
+  var v=lerValor(document.getElementById('qtV').value);
+  if(v===null||v<=0){erroCampo('qtV','Informe o valor pago. Use números, com vírgula para centavos.');return}
+  var ym=lerYM('qtC'),bak=JSON.parse(JSON.stringify(dv)),dvId=dv.id;
+  try{Fin.quitar(dv,ym,v)}catch(e){erroCampo('qtV',e.message);return}
+  cmo();UI.abertos['dv-quitada']=true;UI.flash='dv|'+dvId;
+  toast('Dívida quitada · '+fm(v)+' em '+ymTxt(ym),function(){var x=acharDiv(dvId);if(x){Object.keys(x).forEach(function(k){delete x[k]});Object.assign(x,bak)}toast('Quitação desfeita');R()},10000);R();
+}
+function desfazerQuitacaoUI(id){
+  var dv=acharDiv(id);if(!dv)return;fecharMenu();var q=Fin.quitacaoDe(dv);if(!q)return;
+  confirmar('Desfazer quitação?','Remove o pagamento de <strong>'+fm(q.valor)+'</strong> em '+ymTxt(q.ym)+' e <strong>'+esc(dv.name)+'</strong> volta a ter as parcelas do plano.','Desfazer',function(){Fin.desfazerQuitacao(dv);toast('Quitação desfeita');R()});
 }
 function reabrirDivida(id){
   var dv=acharDiv(id);if(!dv)return;
