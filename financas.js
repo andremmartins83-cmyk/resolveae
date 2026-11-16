@@ -1205,10 +1205,11 @@
     });
     var Y = ano0(DB, ano);
     ((Y && Y.despesas) || []).forEach(function (d) {
-      if (cartaoDespMeta(meta, d) !== cartaoKey) return;
+      var naFat = !cartaoDespMeta(meta, d) && naFaturaMeta(meta, d) === cartaoKey;
+      if (cartaoDespMeta(meta, d) !== cartaoKey && !naFat) return;
       var st = d.status ? (d.status[mes0] || '') : '', valC = Math.max(0, vC(d, mes0) - lancadoNaLinha(DB, ano, mes0, d.name));
       if (valC <= 0 || st === 'N/A') return;
-      itens.push({ tipo: 'despesa', id: d.id, name: d.name, valor: r(valC), status: st });
+      itens.push({ tipo: 'despesa', id: d.id, name: d.name, valor: r(valC), status: st, recorrente: naFat });
       totC += valC;
       if (st === 'Pago') pagoC += valC;
     });
@@ -1221,6 +1222,17 @@
     // pago = o que saiu do caixa (itens quitados − desconto da fatura antecipada)
     var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
     return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
+  };
+  // Conta recorrente cobrada num cartão (ex.: Gympass da Karla, reembolsado): continua nas contas
+  // recorrentes, mas entra na fatura do cartão. meta['d:<nome>'].naFatura = '<cartão>'.
+  function naFaturaMeta(meta, d) { var mt = objOuVazio(meta['d:' + normNome(d && d.name)]); return chaveCartaoValida(mt.naFatura) ? mt.naFatura : null; }
+  Fin.naFatura = function (DB, d) { return naFaturaMeta(metaMapa(cfgDadosRO(DB)), d); };
+  Fin.setNaFatura = function (DB, nome, cartaoKey) {
+    if (cartaoKey && !chaveCartaoValida(cartaoKey)) throw new Error('Cartão inválido: ' + cartaoKey);
+    var meta = clone(metaMapa(cfgDadosRO(DB))), k = 'd:' + normNome(nome), mt = objOuVazio(meta[k]);
+    if (cartaoKey) mt.naFatura = cartaoKey; else delete mt.naFatura;
+    if (Object.keys(mt).length) meta[k] = mt; else delete meta[k];
+    Fin.setConfig(DB, { meta: meta });
   };
   // Soma (centavos) dos lançamentos de despesa feitos numa linha no mês (qualquer forma de pagamento).
   function lancadoNaLinha(DB, ano, mes0, nome) {
@@ -1290,7 +1302,8 @@
     });
     var Y = ano0(DB, ano);
     ((Y && Y.despesas) || []).forEach(function (d) {
-      if (cartaoDespMeta(meta, d) !== cartaoKey || vC(d, mes0) <= 0) return;
+      var naFat2 = !cartaoDespMeta(meta, d) && naFaturaMeta(meta, d) === cartaoKey;
+      if ((cartaoDespMeta(meta, d) !== cartaoKey && !naFat2) || vC(d, mes0) <= 0) return;
       if (!d.status) d.status = s12();
       var st = d.status[mes0] || '';
       if (st === 'Pago' || st === 'N/A') return;

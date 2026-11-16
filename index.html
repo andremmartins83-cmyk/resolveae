@@ -1441,8 +1441,8 @@ function pgPMes(m){
   var foraP=[];
   PM(m).forEach(function(p){if(secaoParc(p)!=='divida')return;var dq=acharDiv(p.dvId);if(dq&&!passa(refV(dq)))return;if(dq&&p.status==='Pago'&&visV(dq,m)==='historico'){foraP.push(p);pago+=Fin.c(p.valor);foraT+=Fin.c(p.valor);return}var it={h:linhaParc(p,ym),dia:diaVenc(p.venc)};div.tot+=Fin.c(p.valor||0);
     if(p.status==='Pago'){div.pag.push(it);pago+=Fin.c(p.pago||p.valor)}else{div.abe.push(it);div.n++;falta+=Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0));pago+=Fin.c(p.pago||0)}});
-  var fats=(fPAtual()==='todas'||fPAtual()==='cartoes')?CARTOES:[];fats=fats.map(function(c){var f=Fin.faturaDoMes(DB,DB.curYear,m,c.k);pago+=Fin.c(f.pago);falta+=Fin.c(f.falta);return{c:c,f:f}}).filter(function(x){return x.f.itens.length});
-  var prevF=rec.tot+div.tot+foraT+cgT;fats.forEach(function(x){prevF+=Fin.c(x.f.total)});
+  var fats=(fPAtual()==='todas'||fPAtual()==='cartoes')?CARTOES:[];fats=fats.map(function(c){var f=Fin.faturaDoMes(DB,DB.curYear,m,c.k),rt=0,rp=0;f.itens.forEach(function(i){if(i.recorrente){rt+=Fin.c(i.valor);if(i.status==='Pago')rp+=Fin.c(i.valor)}});f.recT=rt;pago+=Fin.c(f.pago)-rp;falta+=Fin.c(f.falta)-(rt-rp);return{c:c,f:f}}).filter(function(x){return x.f.itens.length});
+  var prevF=rec.tot+div.tot+foraT+cgT;fats.forEach(function(x){prevF+=Fin.c(x.f.total)-(x.f.recT||0)});
   var h='<div class="pg on"><div class="ph"><div class="pt">Contas de '+mes+'<small>Planejamento '+esc(DB.curYear)+'</small></div><button class="ab" onclick="addD()">'+svg('plus')+'Nova</button></div>';
   h+='<div style="margin:0 0 14px">'+chipsFiltro()+'</div>';
   h+='<div class="stats c3"><div><div class="sx-l">Falta pagar</div><div class="sx-v'+(falta>0?' al':' ok')+'">'+fm(Fin.r(falta))+'</div></div><div><div class="sx-l">Já pago</div><div class="sx-v">'+fm(Fin.r(pago))+'</div></div><div><div class="sx-l">Previsto no mês</div><div class="sx-v">'+fm(Fin.r(prevF))+'</div><div class="sx-s">'+(fPAtual()==='todas'?'contas + cartões + dívidas':'no filtro')+'</div></div></div>';
@@ -1470,7 +1470,7 @@ function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.l
       h+=grp('fat-'+c.k,'Ver '+plural(f.itens.length,'compra','compras')+(nAb&&!paga?' · '+nAb+' em aberto':''),'',function(){return '<ul class="lst">'+f.itens.map(function(i){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
         if(i.tipo==='lanc'){var dd=String(i.data||'').split('-');return '<li class="row"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(String(i.name||i.grupo).replace(/\s*·\s*compra em \d\d\/\d\d$/,''))+'</span><span class="row-s">'+esc(i.grupo)+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>'}
-        var d=achar('despesas',i.id);return d?linhaDesp(d,m,{}):''}).join('')+'</ul>'});
+        var d=achar('despesas',i.id);return d?linhaDesp(d,m,i.recorrente?{tipo:1}:{}):''}).join('')+'</ul>'});
       h+='</div>'});
     return h+'</section>'}
 // ===== LANÇAMENTOS: o que entrou no app, do mais novo para o mais antigo, e a conferência da fatura =====
@@ -2593,6 +2593,7 @@ function editarConta(type,id,mo){var it=achar(type,id);if(!it)return;EDIT={tipo:
     h+='<div class="fd"><label for="ecCat">Categoria</label>'+selCatRef('ecCat',ref)+'</div>';
     if(desp)h+='<div class="fd"><label>Meio de pagamento</label>'+chipsSel('edM',d.meio||'',MEIOS)+'</div>'+
       '<div class="fd" id="fdCart"><label>Banco ou cartão</label>'+chipsSel('edC',d.cartao||'',opsCartao())+'</div>'+
+      '<div class="fd"><label>Cobrada na fatura de</label>'+chipsSel('edNF',Fin.naFatura(DB,it)||'',opsCartao())+'<div class="fd-h">Continua nas contas recorrentes, mas soma no valor da fatura do cartão.</div></div>'+
       '<div class="fd" id="fdVenc"><label for="ecV">Vencimento</label><input type="text" id="ecV" class="inp" value="'+esc(it.venc||'')+'" placeholder="Ex.: Dia 10" autocomplete="off"></div>';
   }
   h+='<div class="fd"><label for="ecVal">Valor</label><input type="text" id="ecVal" class="lc-val" value="'+vIn(it.values[mo])+'" inputmode="decimal" autocomplete="off"></div>'+
@@ -2619,7 +2620,7 @@ function sEditarConta(){var c=EDIT,it=c&&achar(c.tipo,c.id);if(!it){cmo();return
     var cat=g('ecCat');if(cat!==null)patch.categoria=cat;
     var meio=g('edM');if(meio!==null)patch.meio=meio;
     var ca=g('edC');if(ca!==null)patch.cartao=(meio==='credito'||o==='cartao')?ca:'';
-    Fin.setDim(DB,ref,patch)}
+    Fin.setDim(DB,ref,patch);var nf=g('edNF');if(nf!==null&&c.tipo==='despesas')Fin.setNaFatura(DB,it.name,nf||null)}
   var vE=document.getElementById('ecV');if(vE)it.venc=vE.value.trim();
   var sE=document.getElementById('ecS');if(sE&&it.status)it.status[c.m]=sE.value;
   var pg=document.getElementById('ecPg'),antes=Fin.c(it.values[c.m]||0);
