@@ -2953,20 +2953,26 @@ function delLanc(id){
   '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-d" id="lcDelOk">Excluir</button></div>');
   document.getElementById('lcDelOk').onclick=function(){confDelLanc(id)};
 }
-// Lancamento sem previsto no mes entra tambem no planejamento (antes so ia para o Controle e o Inicio nao mudava).
-// Regra: o planejamento so e mexido quando o valor previsto e exatamente a soma dos lancamentos daquela categoria no mes.
+// Lancamento tambem mexe no planejamento, para o saldo do mes refletir o gasto real:
+// - categoria sem previsto (ou previsto = soma dos lancamentos): soma no planejamento;
+// - conta VARIAVEL ja marcada como paga (ex.: Diversos 150 pago): o lancamento e gasto a mais, soma;
+// - previsto em aberto: o lancamento consome o previsto; so o que passar dele sobe o planejamento;
+// - conta FIXA paga (aluguel etc.): nao soma de novo (evita contar o mesmo pagamento duas vezes).
+// Excluir faz o caminho inverso pelas mesmas regras.
 function lancNoPlano(l,sinal){
   var y=DB.years[String(l.ano)];if(!y)return false;
   var renda=String(l.tipo||'despesa')==='renda',lista=renda?y.renda:y.despesas,m=Number(l.mes),n=Fin.normNome(l.categoria),it=null,i;
   for(i=0;i<lista.length;i++)if(Fin.normNome(lista[i].name)===n){it=lista[i];break}
   var outros=0;lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
-  var plano=it?Fin.c(it.values[m]||0):0,vc=Fin.c(l.valor);
+  var plano=it?Fin.c(it.values[m]||0):0,vc=Fin.c(l.valor),aditivo=!renda&&it&&it.tipo!=='fixa'&&it.status&&it.status[m]==='Pago';
   if(sinal>0){
-    if(plano!==outros)return false;
-    if(!it){it=renda?{id:novoId('r'),name:l.categoria,tipo:'variavel',values:z12()}:{id:novoId('d'),name:l.categoria,venc:'',tipo:'variavel',values:z12(),status:s12()};lista.push(it)}
-    it.values[m]=Fin.r(plano+vc);if(!renda)it.status[m]='Pago';return true}
-  if(!it||plano!==outros+vc)return false;
-  it.values[m]=Fin.r(outros);if(!renda&&outros===0&&it.status[m]==='Pago')it.status[m]='';return true}
+    if(!it||plano===outros||aditivo){
+      if(!it){it=renda?{id:novoId('r'),name:l.categoria,tipo:'variavel',values:z12()}:{id:novoId('d'),name:l.categoria,venc:'',tipo:'variavel',values:z12(),status:s12()};lista.push(it)}
+      it.values[m]=Fin.r(plano+vc);if(!renda)it.status[m]='Pago';return true}
+    if(outros+vc>plano){it.values[m]=Fin.r(outros+vc);if(!renda&&it.tipo!=='fixa')it.status[m]='Pago';return true}
+    return false}
+  if(!it||!(aditivo||plano===outros+vc))return false;
+  var nv=Math.max(0,plano-vc);it.values[m]=Fin.r(nv);if(!renda&&nv===0&&it.status[m]==='Pago')it.status[m]='';return true}
 function confDelLanc(id){
   var estavaNaFila=naFila(id),lx=null;lancTodos().forEach(function(x){if(String(x.id)===String(id))lx=x});
   if(lx)lancNoPlano(lx,-1);
