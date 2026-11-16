@@ -967,7 +967,7 @@
     { k: 'educacao', n: 'Educação', icone: '🎓' },
     { k: 'lazer', n: 'Streaming e apps', icone: '🎬' },
     { k: 'roupas', n: 'Roupas e calçados', icone: '👕' },
-    { k: 'beleza', n: 'Beleza e cuidados', icone: '💄' },
+    { k: 'beleza', n: 'Beleza e cuidados', icone: '✂️' },
     { k: 'compras-online', n: 'Compras online', icone: '📦' },
     { k: 'presentes', n: 'Presentes', icone: '🎁' },
     { k: 'itens-casa', n: 'Itens para casa', icone: '🛋️' },
