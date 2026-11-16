@@ -977,6 +977,7 @@
     { k: 'financeiro', n: 'Banco, cartão e empréstimos', icone: '🏦' },
     { k: 'impostos', n: 'Impostos e documentos', icone: '📋' },
     { k: 'renda', n: 'Salário e renda', icone: '💰' },
+    { k: 'diversos', n: 'Diversos', icone: '🧾' },
     { k: 'outros', n: 'Outros', icone: '📌' }
   ];
   // ordem importa: o primeiro grupo com a palavra inteira (ou no plural com 's') ganha
@@ -1003,6 +1004,7 @@
     ['viagem', ['viagem', 'airbnb', 'passeio', 'lua de mel', 'monte verde', 'campos do jordao', 'cataratas', 'duty free', 'aeroporto', 'hotel', 'praia']],
     ['itens-casa', ['geladeira', 'microondas', 'maquina', 'cooktop', 'tv', 'projetor', 'tinta', 'notbook', 'notebook', 'movel', 'moveis', 'lixa', 'pintura', 'aspirador', 'batedeira', 'varal', 'mesa', 'cabeceira', 'cabiceira', 'casa']],
     ['pets', ['pet', 'racao', 'veterinario']],
+    ['diversos', ['diversos', 'debito', 'avulso', 'avulsos']],
     ['renda', ['salario', 'comissao', '13º', '13°', 'ferias', 'plr', 'vale']]
   ];
   function palavras(s) { return normNome(s).replace(/[^a-z0-9º°&]+/g, ' ').trim(); }
