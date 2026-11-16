@@ -959,8 +959,10 @@
     { k: 'telefone', n: 'Telefone e internet', icone: '📱' },
     { k: 'mercado', n: 'Mercado', icone: '🛒' },
     { k: 'alimentacao', n: 'Restaurante e delivery', icone: '🍽️' },
+    { k: 'uber', n: 'Uber', icone: '🚕' },
     { k: 'transporte', n: 'Transporte e carro', icone: '🚗' },
-    { k: 'saude', n: 'Saúde', icone: '💊' },
+    { k: 'farmacia', n: 'Farmácia', icone: '💊' },
+    { k: 'saude', n: 'Saúde', icone: '🩺' },
     { k: 'academia', n: 'Academia e bem-estar', icone: '🏋️' },
     { k: 'educacao', n: 'Educação', icone: '🎓' },
     { k: 'lazer', n: 'Streaming e apps', icone: '🎬' },
@@ -993,9 +995,11 @@
     ['compras-online', ['mercado livre', 'shopee', 'shoope', 'tiktok', 'shein', 'aliexpress']],
     ['mercado', ['mercado', 'supermercado', 'padaria', 'sabao', 'churrasco']],
     ['alimentacao', ['restaurante', 'ifood', 'delivery', 'cafe', 'coffe', 'coffee', 'sorvete', 'pizza', 'lanche', 'sushi', 'pastel']],
-    ['transporte', ['uber', 'gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento', 'oleo', 'pneu', 'transporte', 'trans', 'onibus', 'metro']],
+    ['uber', ['uber', '99 pop', '99pop', 'taxi']],
+    ['transporte', ['gasolina', 'combustivel', 'carro', 'seguro carro', 'licenciamento', 'multa', 'tag', 'estacionamento', 'oleo', 'pneu', 'transporte', 'trans', 'onibus', 'metro']],
     ['academia', ['gympass', 'wellhub', 'academia', 'smart fit']],
-    ['saude', ['farmacia', 'convenio', 'dentista', 'remedio', 'lente', 'oculos', 'medico', 'exame', 'monjaro']],
+    ['farmacia', ['farmacia', 'farmaconde', 'drogaria', 'drogasil', 'remedio', 'raia']],
+    ['saude', ['convenio', 'dentista', 'lente', 'oculos', 'medico', 'exame', 'monjaro']],
     ['educacao', ['faculdade', 'curso', 'livro', 'kindle', 'escola', 'biblia', 'uninove']],
     ['lazer', ['netflix', 'spotify', 'spotfy', 'icloud', 'amazon', 'disney', 'youtube']],
     ['beleza', ['barbearia', 'barbeiro', 'maquiagem', 'perfume', 'depilacao', 'vivara', 'pulseira', 'relogio', 'brinco', 'brincos', 'salao', 'manicure', 'unha']],
@@ -1069,6 +1073,21 @@
     cats[k] = { n: n, icone: String(dados.icone || '').trim() || '📌' };
     Fin.setConfig(DB, { categorias: cats });
     return k;
+  };
+  // Linha de gasto do grupo no ano (uma só, qualquer que seja o meio de pagamento).
+  // Procura a despesa com o nome da categoria; se criar=true e não houver, cria variável sem cartão.
+  Fin.linhaGrupo = function (DB, ano, k, criar) {
+    var Y = ano0(DB, ano), cat = null;
+    Fin.categorias(DB).forEach(function (c0) { if (c0.k === k) cat = c0; });
+    if (!Y || !cat) return null;
+    var n = normNome(cat.n), it = null;
+    (Y.despesas || []).forEach(function (d) { if (!it && normNome(d.name) === n) it = d; });
+    if (it || !criar) return it;
+    it = { id: Fin.novoId('d'), name: cat.n, venc: '', tipo: 'variavel', values: z12(), status: s12() };
+    if (!Y.despesas) Y.despesas = [];
+    Y.despesas.push(it);
+    Fin.setDim(DB, { kind: 'desp', ano: String(ano), item: it }, { categoria: k, obrigacao: 'conta' });
+    return it;
   };
   Fin.iconeCategoria = function (DB, k) {
     var cs = Fin.categorias(DB);
@@ -1193,10 +1212,34 @@
       totC += valC;
       if (st === 'Pago') pagoC += valC;
     });
+    var fp = fatPaga(raw, cartaoKey, ym(ano, mes0));
+    lancsCredito(DB, ym(ano, mes0), cartaoKey).forEach(function (l) {
+      var vc = c(l.valor);
+      itens.push({ tipo: 'lanc', id: l.id, name: String(l.obs || l.categoria || ''), grupo: l.categoria, data: l.data || '', valor: r(vc), status: fp ? 'Pago' : '' });
+      totC += vc; if (fp) pagoC += vc;
+    });
     // pago = o que saiu do caixa (itens quitados − desconto da fatura antecipada)
     var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
     return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
   };
+  // Compras à vista no crédito: lançamentos com origem 'credito:<cartão>' no mês da fatura (sem repetir id da fila).
+  function lancsCredito(DB, alvo, cartaoKey) {
+    var vistos = {}, out = [], o = 'credito:' + cartaoKey;
+    ((DB && DB.lancamentos) || []).concat((DB && DB.filaLanc) || []).forEach(function (l) {
+      if (!l || vistos[l.id] || String(l.origem || '') !== o || String(l.tipo || 'despesa') !== 'despesa') return;
+      if (ym(l.ano, Number(l.mes)) !== alvo) return;
+      vistos[l.id] = true; out.push(l);
+    });
+    return out;
+  }
+  Fin.lancsCredito = lancsCredito;
+  // Marca de fatura paga (compras à vista): config 'faturasPagas' = { '<cartao>|AAAA-MM': true }.
+  function fatPaga(raw, cartaoKey, alvo) { return objOuVazio(raw && raw.faturasPagas)[cartaoKey + '|' + alvo] === true; }
+  function gravarFatPaga(DB, chave, valor) {
+    var mp = clone(objOuVazio(cfgDadosRO(DB).faturasPagas));
+    if (valor) mp[chave] = true; else delete mp[chave];
+    Fin.setConfig(DB, { faturasPagas: mp });
+  }
   // Desconto de fatura: config 'descontosFatura' = { '<cartao>|AAAA-MM': valor }.
   function descFaturaMapa(raw) { return objOuVazio(raw && raw.descontosFatura); }
   function descFaturaC(raw, cartaoKey, alvo) { return Math.max(0, c(descFaturaMapa(raw)[cartaoKey + '|' + alvo])); }
@@ -1244,6 +1287,10 @@
       tok.desp.push({ ano: String(ano), id: d.id, m: mes0, antes: st });
       d.status[mes0] = 'Pago';
     });
+    if (lancsCredito(DB, alvo, cartaoKey).length && !fatPaga(cfgDadosRO(DB), cartaoKey, alvo)) {
+      tok.fat = { chave: cartaoKey + '|' + alvo };
+      gravarFatPaga(DB, tok.fat.chave, true);
+    }
     return tok;
   };
   Fin.desfazerFatura = function (DB, token) {
@@ -1265,6 +1312,7 @@
       d.status[t.m] = t.antes || '';
     }
     if (token && token.desc) gravarDescFatura(DB, token.desc.chave, token.desc.antes);
+    if (token && token.fat) gravarFatPaga(DB, token.fat.chave, false);
     return DB;
   };
   // Tira o desconto de uma fatura (ex.: lançado errado). Devolve o valor que havia.
