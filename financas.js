@@ -1076,7 +1076,7 @@
   };
   // Linha de gasto do grupo no ano (uma só, qualquer que seja o meio de pagamento).
   // Procura a despesa com o nome da categoria; se criar=true e não houver, cria variável sem cartão.
-  Fin.linhaGrupo = function (DB, ano, k, criar) {
+  Fin.linhaGrupo = function (DB, ano, k, criar, obrig) {
     var Y = ano0(DB, ano), cat = null;
     Fin.categorias(DB).forEach(function (c0) { if (c0.k === k) cat = c0; });
     if (!Y || !cat) return null;
@@ -1086,7 +1086,7 @@
     it = { id: Fin.novoId('d'), name: cat.n, venc: '', tipo: 'variavel', values: z12(), status: s12() };
     if (!Y.despesas) Y.despesas = [];
     Y.despesas.push(it);
-    Fin.setDim(DB, { kind: 'desp', ano: String(ano), item: it }, { categoria: k, obrigacao: 'conta' });
+    Fin.setDim(DB, { kind: 'desp', ano: String(ano), item: it }, { categoria: k, obrigacao: obrig === 'cartao' ? 'cartao' : 'conta' });
     return it;
   };
   Fin.iconeCategoria = function (DB, k) {
@@ -1206,7 +1206,7 @@
     var Y = ano0(DB, ano);
     ((Y && Y.despesas) || []).forEach(function (d) {
       if (cartaoDespMeta(meta, d) !== cartaoKey) return;
-      var st = d.status ? (d.status[mes0] || '') : '', valC = vC(d, mes0);
+      var st = d.status ? (d.status[mes0] || '') : '', valC = Math.max(0, vC(d, mes0) - lancadoNaLinha(DB, ano, mes0, d.name));
       if (valC <= 0 || st === 'N/A') return;
       itens.push({ tipo: 'despesa', id: d.id, name: d.name, valor: r(valC), status: st });
       totC += valC;
@@ -1222,6 +1222,16 @@
     var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
     return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
   };
+  // Soma (centavos) dos lançamentos de despesa feitos numa linha no mês (qualquer forma de pagamento).
+  function lancadoNaLinha(DB, ano, mes0, nome) {
+    var n = normNome(nome), t = 0, vistos = {};
+    ((DB && DB.lancamentos) || []).concat((DB && DB.filaLanc) || []).forEach(function (l) {
+      if (!l || vistos[l.id] || String(l.tipo || 'despesa') !== 'despesa') return;
+      if (String(l.ano) !== String(ano) || Number(l.mes) !== Number(mes0) || normNome(l.categoria) !== n) return;
+      vistos[l.id] = true; t += c(l.valor);
+    });
+    return t;
+  }
   // Compras à vista no crédito: lançamentos com origem 'credito:<cartão>' no mês da fatura (sem repetir id da fila).
   function lancsCredito(DB, alvo, cartaoKey) {
     var vistos = {}, out = [], o = 'credito:' + cartaoKey;
