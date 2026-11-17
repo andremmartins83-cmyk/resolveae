@@ -802,6 +802,8 @@ var MENOS_MOV=window.matchMedia?window.matchMedia('(prefers-reduced-motion: redu
 // estado so de tela (grupos abertos, destaque do que mudou): nao entra no DB nem na planilha
 var UI={abertos:{'dv-atrasada':1,'dv-em-dia':1,'dv-radar':1},flash:null};
 function nomeParc(n){return String(n||'').replace(/^\[DIV\]\s*/,'')}
+// atrasada só quando o vencimento já passou (mês anterior a hoje, ou este mês com o dia já passado)
+function vencida(d,ano,m){var ym=Fin.ym(ano,m),hj=hojeYM();return ym<hj||(ym===hj&&diaVenc(d.venc)<99&&diaVenc(d.venc)<new Date().getDate())}
 function diaVenc(v){var m=String(v||'').match(/\d{1,2}/);return m?Number(m[0]):99}
 function vencTxt(v){v=String(v||'').trim();return v?(/^\d{1,2}$/.test(v)?'Dia '+v:v):''}
 function ring(cls){return '<span class="ring'+(cls?' '+cls:'')+'">'+svg('check')+'</span>'}
@@ -1445,7 +1447,7 @@ function pgD(m){
   var mAnt=MN[(m+11)%12].toLowerCase(),mProx=MN[(m+1)%12].toLowerCase(),mes=MN[m].toLowerCase();
   // o que precisa de acao: contas sem baixa de meses anteriores, pendentes do mes e parcelas em aberto
   var itens=[],falta=0,nAtr=0;
-  for(var mm=0;mm<m;mm++)y.despesas.forEach(function(d){if(stD(d,mm)==='Pendente'){itens.push({h:linhaDesp(d,mm,{atr:1}),o:-1,dia:diaVenc(d.venc)});falta+=Fin.c(d.values[mm]||0);nAtr++}});
+  for(var mm=0;mm<m;mm++)y.despesas.forEach(function(d){if(stD(d,mm)==='Pendente'&&vencida(d,DB.curYear,mm)){itens.push({h:linhaDesp(d,mm,{atr:1}),o:-1,dia:diaVenc(d.venc)});falta+=Fin.c(d.values[mm]||0);nAtr++}});
   y.despesas.forEach(function(d){if(emAberto(d,m)){itens.push({h:linhaDesp(d,m),o:0,dia:diaVenc(d.venc)});falta+=Fin.c(d.values[m]||0)}});
   pm2.forEach(function(p){if(p.status!=='Pago'){itens.push({h:linhaParc(p,ym),o:0,dia:diaVenc(p.venc)});falta+=Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0))}});
   itens.sort(function(a,b){return a.o-b.o||a.dia-b.dia});
