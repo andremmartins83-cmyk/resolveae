@@ -1198,7 +1198,12 @@ function lerValor(s){
   if(!isFinite(n)||n<0)return null;
   return Math.round(n*100)/100;
 }
-function vIn(v){return v?String(v).replace('.',','):'0'}   // valor para o campo de texto
+function vIn(v){return Number(v)?Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'0,00'}   // valor para o campo de texto
+// Campo de valor igual ao app do banco: os números entram pelos centavos (1 8 3 7 4 = 183,74), sem precisar digitar a vírgula
+function mascaraValor(el){var v=String(el.value||''),neg=/-/.test(v),d=v.replace(/\D/g,'').replace(/^0+/,'');if(!d){el.value=neg?'-':'';return}
+  var n=Number(d)/100;el.value=(neg?'-':'')+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});try{var L=el.value.length;el.setSelectionRange(L,L)}catch(e){}}
+document.addEventListener('input',function(e){var el=e.target;if(el&&el.matches&&el.matches('input[inputmode="decimal"]'))mascaraValor(el)},true);
+document.addEventListener('focusin',function(e){var el=e.target;if(el&&el.matches&&el.matches('input[inputmode="decimal"]')&&el.value){setTimeout(function(){try{el.select()}catch(x){}},0)}},true);
 var TC={};   // cache dos calculos, zera a cada desenho
 var T0={renda:0,despProprias:0,parcelas:0,despesas:0,reserva:0,sobraAnterior:0,saldo:0,comprometimento:0,comprometimentoDividas:0,pendentes:0};
 function TA(ano){ano=String(ano||DB.curYear);var k='a|'+ano;return TC[k]||(TC[k]=Fin.totaisAno(DB,ano,hojeYM())||null)}
@@ -1367,7 +1372,7 @@ function linhaDesp(d,m,o){
 function blk(k,ic,tit,sub,val,cls,fn){var ab=!!UI.abertos[k];GRP[k]=fn;
   return '<details class="blk" data-grp="'+esc(k)+'"'+(ab?' open':'')+'><summary><span class="blk-ic">'+ic+'</span><span class="blk-tx"><span class="blk-t">'+tit+'</span>'+(sub?'<span class="blk-s">'+sub+'</span>':'')+'</span><span class="blk-v '+cls+'">'+val+'</span>'+svg('chev')+'</summary><div class="grp-b">'+(ab?fn():'')+'</div></details>'}
 function difBanco(total,bv){if(bv===null||bv===undefined)return null;return Fin.r(Fin.c(total)-Fin.c(bv))}
-function txtBanco(dif){if(dif===null)return '';return Math.abs(dif)<=0.1?'bate com o banco'+(dif?' (diferença de '+fm(Math.abs(dif))+')':''):(dif>0?'app tem '+fm(dif)+' a mais que o banco':'faltam '+fm(-dif)+' no app')}
+function txtBanco(dif){if(dif===null)return '';return Math.abs(dif)<0.005?'bate com o banco':(dif>0?'app tem '+fm(dif)+' a mais que o banco':'faltam '+fm(-dif)+' no app')}
 function linhaConta(i,m){var ym=Fin.ym(DB.curYear,m);
   if(i.tipo==='parcela'){var p=PM(m).filter(function(x){return x.dvId===i.dvId})[0];return p?linhaParc(p,ym):''}
   if(i.tipo==='lanc'){var dd=String(i.data||'').split('-'),cl=cartaoDe(String(i.origem).replace(/^app:?/,''));return '<li class="row pago"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(String(i.name||i.grupo).split(' · ')[0])+'</span><span class="row-s">'+(cl?'Débito '+cl.n:'Pix')+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+' · '+esc(i.grupo)+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button><span class="row-end" title="Pago">'+ring('ok')+'</span></li>'}
@@ -1389,7 +1394,7 @@ function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
   h+=blk('blc-f',ic3d('💳'),'Faturas',nF?plural(nF,'cartão','cartões')+' · toque para ver as compras':'nada no cartão',nF?'−'+fm(b.faturas.total):fm(0),'ne',function(){
     if(!nF)return '<div class="vazio" style="padding:18px">Nenhuma fatura em '+mes+'.</div>';
     return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.falta>0?f.falta:f.total,f.banco),sub=[plural(f.qtd,'item','itens')];if(f.pagoAntes>0)sub.push('compras '+fm(f.total)+' − já pago '+fm(f.pagoAntes));
-      if(f.falta<=0.009)sub.push('paga');if(dif!==null)sub.push(Math.abs(dif)<=0.1?'✓ bate com o banco':'<span class="al">'+txtBanco(dif)+'</span>');
+      if(f.falta<=0.009)sub.push('paga');if(dif!==null)sub.push(Math.abs(dif)<0.005?'✓ bate com o banco':'<span class="al">'+txtBanco(dif)+'</span>');
       return '<li class="row"><button class="row-main" data-acao="fat-ver" data-k="'+f.k+'"><span class="ic">'+selo(c,30)+'</span><span class="row-tx"><span class="row-t">'+c.n+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(f.valor)+'</span></button></li>'}).join('')+
       (b.faturas.desconto>0?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">Desconto por pagar antes</span></span><span class="row-v ok">−'+fm(b.faturas.desconto)+'</span></div></li>':'')+'</ul>'});
   h+=blk('blc-c',ic3d('🏦'),'Sai da conta',b.conta.falta>0?'falta pagar '+fm(b.conta.falta):'contas, carnês e Pix · tudo pago','−'+fm(b.conta.total),'ne',function(){
@@ -1401,7 +1406,7 @@ function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
 function dataCompra(i){var mt=String(i.name||'').match(/compra em (\d\d)\/(\d\d)/);if(mt)return {dd:mt[1],mm:mt[2]};var p=String(i.data||'').split('-');return p.length===3?{dd:p[2],mm:p[1]}:null}
 function htmlFaturaVer(k,m){var c=cartaoPorChave(k),f=Fin.faturaDoMes(DB,DB.curYear,m,k),mes=MN[m].toLowerCase(),bv=Fin.valorBanco(DB,k,DB.curYear,m),ap=f.falta>0?f.falta:f.total,dif=difBanco(ap,bv);
   var h='<h3 style="display:flex;align-items:center;gap:10px">'+selo(c,28)+'Fatura '+c.n+' · '+mes+'</h3>';
-  h+='<div class="fv-cmp"><div><span>'+(f.falta>0?'A pagar no app':'Total no app')+'</span><b>'+fm(ap)+'</b></div><div><span>No banco</span><b'+(bv===null?' style="color:var(--t3)"':'')+'>'+(bv===null?'—':fm(bv))+'</b></div><div class="fv-st'+(dif===null?'':Math.abs(dif)<=0.1?' ok':' al')+'">'+(dif===null?'Digite abaixo o total que o app do banco mostra':(Math.abs(dif)<=0.1?svg('ok'):'')+txtBanco(dif))+'</div></div>';
+  h+='<div class="fv-cmp"><div><span>'+(f.falta>0?'A pagar no app':'Total no app')+'</span><b>'+fm(ap)+'</b></div><div><span>No banco</span><b'+(bv===null?' style="color:var(--t3)"':'')+'>'+(bv===null?'—':fm(bv))+'</b></div><div class="fv-st'+(dif===null?'':Math.abs(dif)<0.005?' ok':' al')+'">'+(dif===null?'Digite abaixo o total que o app do banco mostra':(Math.abs(dif)<0.005?svg('ok'):'')+txtBanco(dif))+'</div></div>';
   var pa=Fin.pagoAntes(DB,k,DB.curYear,m),nAnt=f.itens.filter(function(i){return i.antecipada}).length;
   h+='<p class="fd-h" style="margin:0 0 10px">Compras e parcelas: <b>'+fm(f.total)+'</b>'+(pa>0?' · já pago antes no cartão: <b>'+fm(pa)+'</b>':'')+(f.pago-pa>0.009?' · pago: <b>'+fm(Fin.r(Fin.c(f.pago)-Fin.c(pa)))+'</b>':'')+(nAnt?' · '+plural(nAnt,'parcela antecipada','parcelas antecipadas')+' para esta fatura':'')+'</p>';
   h+='<div class="fd"><label for="fvB">A pagar no app do banco</label><div class="fv-row"><input type="text" id="fvB" class="inp" inputmode="decimal" placeholder="Ex.: 4.454,25" autocomplete="off" value="'+valorCampo(bv)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fvSalvar(\''+k+'\')}"><button type="button" class="btn btn-s" data-acao="fat-bco" data-k="'+k+'">Conferir</button></div></div>';

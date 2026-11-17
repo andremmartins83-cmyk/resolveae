@@ -102,8 +102,11 @@
     if (!dv || !ymParse(dv.inicio)) return [];
     var q = qtdDe(dv), v = c(dv.parcela);
     if (q < 1 || v <= 0) return [];
+    // parcela com valor diferente das outras (o banco arredonda a 1ª ou a última): flag 'pval|AAAA-MM|valor'
+    var ov = {};
+    ((dv && Array.isArray(dv.flags)) ? dv.flags : []).forEach(function (f) { var p = String(f).split('|'); if (p[0] === 'pval' && ymParse(p[1]) && Number(p[2]) > 0) ov[p[1]] = c(Number(p[2])); });
     var out = [];
-    for (var k = 1; k <= q; k++) out.push({ k: k, ym: ymAdd(dv.inicio, k - 1), valor: r(v) });
+    for (var k = 1; k <= q; k++) { var y0 = ymAdd(dv.inicio, k - 1); out.push({ k: k, ym: y0, valor: r(ov[y0] !== undefined ? ov[y0] : v) }); }
     return out;
   };
 
