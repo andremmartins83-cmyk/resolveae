@@ -1273,18 +1273,20 @@
       rendas.push({ nome: String(x.name), valor: r(v), reembolso: re });
     });
     rendas.sort(function (a, b) { return b.valor - a.valor; });
-    var fats = [], fatC = 0, noFat = {}, credLinha = {}, vistos = {};
+    var fats = [], fatC = 0, paAntC = 0, noFat = {}, credLinha = {}, vistos = {}, pixLinha = {};
     Fin.CARTOES.forEach(function (cc) {
       var f = Fin.faturaDoMes(DB, ano, mes0, cc.k);
       if (!f.itens.length) return;
-      fats.push({ k: cc.k, n: cc.n, total: f.total, desconto: f.desconto || 0, pago: f.pago, falta: f.falta, qtd: f.itens.length, banco: Fin.valorBanco(DB, cc.k, ano, mes0) });
-      fatC += c(f.total);
+      var paC = c(f.pagoAntes || 0);
+      fats.push({ k: cc.k, n: cc.n, total: f.total, pagoAntes: r(paC), valor: r(c(f.total) - paC), desconto: f.desconto || 0, pago: f.pago, falta: f.falta, qtd: f.itens.length, banco: Fin.valorBanco(DB, cc.k, ano, mes0) });
+      fatC += c(f.total); paAntC += paC;
       f.itens.forEach(function (i) { if (i.tipo === 'despesa') noFat[i.id] = (noFat[i.id] || 0) + c(i.valor); });
     });
     ((DB && DB.lancamentos) || []).concat((DB && DB.filaLanc) || []).forEach(function (l) {
       if (!l || vistos[l.id] || String(l.tipo || 'despesa') !== 'despesa' || ym(l.ano, Number(l.mes)) !== alvo) return;
-      var o = String(l.origem || ''); if (o.indexOf('credito:') !== 0 || !chaveCartaoValida(o.slice(8))) return;
-      vistos[l.id] = true; var n = normNome(l.categoria); credLinha[n] = (credLinha[n] || 0) + c(l.valor);
+      var o = String(l.origem || ''), n = normNome(l.categoria); vistos[l.id] = true;
+      if (o.indexOf('credito:') !== 0 || !chaveCartaoValida(o.slice(8))) { (pixLinha[n] = pixLinha[n] || []).push(l); return; }
+      credLinha[n] = (credLinha[n] || 0) + c(l.valor);
     });
     var conta = [], itC = 0;
     ((Y && Y.despesas) || []).forEach(function (d) {
@@ -1292,9 +1294,11 @@
       if (v <= 0 || st === 'N/A') return;
       var cr = credLinha[normNome(d.name)] || 0, resto = v - (noFat[d.id] || 0) - cr;
       if (resto <= 0) return;
-      var pagoL = lancadoNaLinha(DB, ano, mes0, d.name) - cr;
-      conta.push({ tipo: 'despesa', id: d.id, name: d.name, venc: d.venc || '', valor: r(resto), status: st !== 'Pago' && pagoL >= resto ? 'Pago' : st, pagoLanc: st !== 'Pago' && pagoL >= resto });
-      itC += resto;
+      var px = pixLinha[normNome(d.name)] || [], pxC = 0;
+      px.forEach(function (l) { var vc = Math.min(c(l.valor), resto - pxC); if (vc <= 0) return; pxC += vc;
+        conta.push({ tipo: 'lanc', id: l.id, name: String(l.obs || l.categoria || ''), grupo: d.name, data: l.data || '', origem: String(l.origem || ''), valor: r(vc), status: 'Pago' }); });
+      itC += pxC;
+      if (resto - pxC > 0) { conta.push({ tipo: 'despesa', id: d.id, name: d.name, venc: d.venc || '', valor: r(resto - pxC), status: st }); itC += resto - pxC; }
     });
     Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
       var dv = dividaPorId(DB, l.dvId);
@@ -1308,8 +1312,8 @@
     conta.sort(function (a, b) { return aberto(a) - aberto(b) || b.valor - a.valor; });
     var faltaC = 0; conta.forEach(function (i) { if (i.tipo !== 'ajuste' && i.status !== 'Pago') faltaC += c(i.valor); });
     return {
-      entra: { total: r(c(t.renda) + c(t.sobraAnterior)), renda: t.renda, reembolsos: r(reembC), outras: r(outrasC), sobraAnterior: t.sobraAnterior, itens: rendas },
-      faturas: { total: r(fatC - descC), desconto: r(descC), itens: fats },
+      entra: { total: r(c(t.renda) + c(t.sobraAnterior) - paAntC), renda: t.renda, reembolsos: r(reembC), outras: r(outrasC), sobraAnterior: t.sobraAnterior, pagoNoCartao: r(paAntC), itens: rendas },
+      faturas: { total: r(fatC - paAntC - descC), desconto: r(descC), itens: fats },
       conta: { total: r(contaC), falta: r(faltaC), itens: conta },
       reserva: t.reserva, sobra: t.saldo
     };

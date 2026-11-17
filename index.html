@@ -673,6 +673,7 @@ tr.auto td,tr.auto td.cn{background:var(--b50)}
   .grab{display:flex;justify-content:center;align-items:center;height:26px;margin:0 -18px 6px;touch-action:none;cursor:grab;position:sticky;top:0;background:var(--wh);z-index:2}
   .grab::before{content:'';width:38px;height:5px;border-radius:3px;background:var(--bd)}
   .md h3{font-size:20px}
+  @supports (height:100dvh){.md{max-height:calc(100dvh - 28px - var(--sat))}}
   .md .mac{position:sticky;bottom:calc(-18px - var(--sab));margin:20px -18px calc(-18px - var(--sab));padding:12px 18px calc(14px + var(--sab));background:var(--wh);border-top:1px solid var(--bl);z-index:2}
   .md .mac .btn{flex:1 1 30%}
   .md .mac .btn-g{flex:0 0 auto}
@@ -1369,6 +1370,7 @@ function difBanco(total,bv){if(bv===null||bv===undefined)return null;return Fin.
 function txtBanco(dif){if(dif===null)return '';return Math.abs(dif)<=0.1?'bate com o banco'+(dif?' (diferença de '+fm(Math.abs(dif))+')':''):(dif>0?'app tem '+fm(dif)+' a mais que o banco':'faltam '+fm(-dif)+' no app')}
 function linhaConta(i,m){var ym=Fin.ym(DB.curYear,m);
   if(i.tipo==='parcela'){var p=PM(m).filter(function(x){return x.dvId===i.dvId})[0];return p?linhaParc(p,ym):''}
+  if(i.tipo==='lanc'){var dd=String(i.data||'').split('-'),cl=cartaoDe(String(i.origem).replace(/^app:?/,''));return '<li class="row pago"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(String(i.name||i.grupo).split(' · ')[0])+'</span><span class="row-s">'+(cl?'Débito '+cl.n:'Pix')+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+' · '+esc(i.grupo)+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button><span class="row-end" title="Pago">'+ring('ok')+'</span></li>'}
   if(i.tipo==='ajuste')return '<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">'+esc(i.name)+'</span><span class="row-s">diferença entre o planejamento e as faturas</span></span><span class="row-v">'+fm(i.valor)+'</span></div></li>';
   var d=achar('despesas',i.id);if(!d)return '';var pend=i.status!=='Pago',sub=[],vt=vencTxt(d.venc),lf=lancForma(d.name,m);
   if(vt)sub.push(esc(vt));if(lf.cred)sub.push(fm(Fin.r(lf.cred))+' no cartão já está na fatura');if(!pend)sub.push(i.pagoLanc?'pago no Pix ou débito':'pago');
@@ -1381,13 +1383,14 @@ function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
   h+=blk('blc-e',ic3d('💰'),'Entra',(nRe?'renda e reembolsos':'renda do mês')+(Fin.c(b.entra.sobraAnterior)?' + sobra de '+mAnt:''),fm(b.entra.total),'po',function(){
     return '<ul class="lst">'+b.entra.itens.map(function(x){var it=Y().renda.filter(function(r){return r.name===x.nome})[0];
       return '<li class="row"><button class="row-main" data-acao="eVR" data-tipo="renda" data-id="'+esc(it?it.id:'')+'" data-m="'+m+'"><span class="ic">'+gi(x.nome)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span>'+(x.reembolso?'<span class="row-s">devolve o que foi pago no cartão</span>':'')+'</span><span class="row-v ok">'+fm(x.valor)+'</span></button></li>'}).join('')+
+      (b.entra.pagoNoCartao>0?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('💳')+'</span><span class="row-tx"><span class="row-t">Pago direto no cartão</span><span class="row-s">reembolso que foi para a fatura, não para a conta</span></span><span class="row-v">−'+fm(b.entra.pagoNoCartao)+'</span></div></li>':'')+
       (Fin.c(b.entra.sobraAnterior)?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🐷')+'</span><span class="row-tx"><span class="row-t">Sobra de '+mAnt+'</span><span class="row-s">o que passou do mês anterior</span></span><span class="row-v'+(b.entra.sobraAnterior<0?' al':' ok')+'">'+fm(b.entra.sobraAnterior)+'</span></div></li>':'')+'</ul>'});
   var nF=b.faturas.itens.length;
   h+=blk('blc-f',ic3d('💳'),'Faturas',nF?plural(nF,'cartão','cartões')+' · toque para ver as compras':'nada no cartão',nF?'−'+fm(b.faturas.total):fm(0),'ne',function(){
     if(!nF)return '<div class="vazio" style="padding:18px">Nenhuma fatura em '+mes+'.</div>';
-    return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.falta>0?f.falta:f.total,f.banco),sub=[plural(f.qtd,'item','itens')];if(f.falta>0.009&&Fin.c(f.falta)!==Fin.c(f.total))sub.push('a pagar '+fm(f.falta));
+    return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.falta>0?f.falta:f.total,f.banco),sub=[plural(f.qtd,'item','itens')];if(f.pagoAntes>0)sub.push('compras '+fm(f.total)+' − já pago '+fm(f.pagoAntes));
       if(f.falta<=0.009)sub.push('paga');if(dif!==null)sub.push(Math.abs(dif)<=0.1?'✓ bate com o banco':'<span class="al">'+txtBanco(dif)+'</span>');
-      return '<li class="row"><button class="row-main" data-acao="fat-ver" data-k="'+f.k+'"><span class="ic">'+selo(c,30)+'</span><span class="row-tx"><span class="row-t">'+c.n+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(f.total)+'</span></button></li>'}).join('')+
+      return '<li class="row"><button class="row-main" data-acao="fat-ver" data-k="'+f.k+'"><span class="ic">'+selo(c,30)+'</span><span class="row-tx"><span class="row-t">'+c.n+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(f.valor)+'</span></button></li>'}).join('')+
       (b.faturas.desconto>0?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">Desconto por pagar antes</span></span><span class="row-v ok">−'+fm(b.faturas.desconto)+'</span></div></li>':'')+'</ul>'});
   h+=blk('blc-c',ic3d('🏦'),'Sai da conta',b.conta.falta>0?'falta pagar '+fm(b.conta.falta):'contas, carnês e Pix · tudo pago','−'+fm(b.conta.total),'ne',function(){
     if(!b.conta.itens.length)return '<div class="vazio" style="padding:18px">Nada sai direto da conta em '+mes+'.</div>';
@@ -1561,7 +1564,7 @@ function pgPMes(m){
 function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.length)return '';
   h+='<section class="card sec" id="sec-cart"><div class="card-h"><div><h2>'+tit+'</h2><div class="sec-s">'+sub+'</div></div></div>';
     fats.forEach(function(x){var f=x.f,c=x.c,paga=f.falta<=0.009,nAb=f.itens.filter(function(i){return i.status!=='Pago'}).length;
-      h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga'+(f.desconto>0?' com desconto de '+fm(f.desconto):''):' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(f.total)+'</div></div>';
+      h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga'+(f.desconto>0?' com desconto de '+fm(f.desconto):''):' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(Fin.r(Fin.c(f.total)-Fin.c(f.pagoAntes||0)))+'</div></div>';
       h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button> <button class="lk" data-acao="fat-desc" data-k="'+c.k+'">Com desconto</button>')+' <button class="lk" data-acao="fat-ver" data-k="'+c.k+'">Ver fatura</button></div>';
       h+=grp('fat-'+c.k,'Ver '+plural(f.itens.length,'compra','compras')+(nAb&&!paga?' · '+nAb+' em aberto':''),'',function(){return '<ul class="lst">'+f.itens.map(function(i){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
