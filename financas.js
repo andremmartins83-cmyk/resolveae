@@ -1223,6 +1223,86 @@
     var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
     return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
   };
+  // ===== Parte de terceiro: compra feita no cartão com parte de outra pessoa, que devolve =====
+  // config 'terceiros' = { '<chave>': {quem, valor} }. Chave: 'l:<id do lançamento>', 'dv:<id da dívida>'
+  // (valor = por parcela) ou 'd:<nome da conta>' (valor = por mês). O reembolso entra como renda 'Reembolso - <quem>'.
+  function terceirosMapa(raw) { return objOuVazio(raw && raw.terceiros); }
+  Fin.chaveTerceiro = function (tipo, x) { return tipo === 'lanc' ? 'l:' + x : tipo === 'parcela' ? 'dv:' + x : 'd:' + normNome(x); };
+  Fin.terceiro = function (DB, chave) {
+    var t = terceirosMapa(cfgDadosRO(DB))[chave];
+    return t && t.quem && Number(t.valor) > 0 ? { quem: String(t.quem), valor: r(c(t.valor)) } : null;
+  };
+  Fin.setTerceiro = function (DB, chave, quem, valor) {
+    var mp = clone(terceirosMapa(cfgDadosRO(DB)));
+    if (quem && String(quem).trim() && Number(valor) > 0) mp[chave] = { quem: String(quem).trim(), valor: r(c(valor)) }; else delete mp[chave];
+    Fin.setConfig(DB, { terceiros: mp });
+  };
+  Fin.nomeReembolso = function (quem) { return 'Reembolso - ' + String(quem || '').trim(); };
+  // Valor da fatura no app do banco, digitado para conferir: config 'faturasBanco' = { '<cartão>|AAAA-MM': valor }.
+  Fin.valorBanco = function (DB, cartaoKey, ano, mes0) { var v = objOuVazio(cfgDadosRO(DB).faturasBanco)[cartaoKey + '|' + ym(ano, mes0)]; return v === undefined || v === null || v === '' ? null : r(c(v)); };
+  Fin.setValorBanco = function (DB, cartaoKey, ano, mes0, valor) {
+    if (!chaveCartaoValida(cartaoKey)) throw new Error('Cartão inválido: ' + cartaoKey);
+    var mp = clone(objOuVazio(cfgDadosRO(DB).faturasBanco)), k = cartaoKey + '|' + ym(ano, mes0);
+    if (valor === null || valor === undefined || valor === '') delete mp[k]; else mp[k] = r(c(valor));
+    Fin.setConfig(DB, { faturasBanco: mp });
+  };
+
+  // ===== O mês em 4 blocos: entra − faturas − sai da conta (− reserva) = sobra =====
+  // Bate sempre com totaisMes: o que não está em fatura de cartão é "sai da conta" (o resto vira item 'ajuste').
+  Fin.blocosMes = function (DB, ano, mes0) {
+    var t = Fin.totaisMes(DB, ano, mes0);
+    if (!t) return null;
+    var Y = ano0(DB, ano), raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw), alvo = ym(ano, mes0);
+    var rendas = [], reembC = 0, outrasC = 0;
+    ((Y && Y.renda) || []).forEach(function (x) {
+      var v = vC(x, mes0); if (v <= 0) return;
+      var re = /^reembolso/i.test(String(x.name || '').trim());
+      if (re) reembC += v; else outrasC += v;
+      rendas.push({ nome: String(x.name), valor: r(v), reembolso: re });
+    });
+    rendas.sort(function (a, b) { return b.valor - a.valor; });
+    var fats = [], fatC = 0, noFat = {}, credLinha = {}, vistos = {};
+    Fin.CARTOES.forEach(function (cc) {
+      var f = Fin.faturaDoMes(DB, ano, mes0, cc.k);
+      if (!f.itens.length) return;
+      fats.push({ k: cc.k, n: cc.n, total: f.total, desconto: f.desconto || 0, pago: f.pago, falta: f.falta, qtd: f.itens.length, banco: Fin.valorBanco(DB, cc.k, ano, mes0) });
+      fatC += c(f.total);
+      f.itens.forEach(function (i) { if (i.tipo === 'despesa') noFat[i.id] = (noFat[i.id] || 0) + c(i.valor); });
+    });
+    ((DB && DB.lancamentos) || []).concat((DB && DB.filaLanc) || []).forEach(function (l) {
+      if (!l || vistos[l.id] || String(l.tipo || 'despesa') !== 'despesa' || ym(l.ano, Number(l.mes)) !== alvo) return;
+      var o = String(l.origem || ''); if (o.indexOf('credito:') !== 0 || !chaveCartaoValida(o.slice(8))) return;
+      vistos[l.id] = true; var n = normNome(l.categoria); credLinha[n] = (credLinha[n] || 0) + c(l.valor);
+    });
+    var conta = [], itC = 0;
+    ((Y && Y.despesas) || []).forEach(function (d) {
+      var st = d.status ? (d.status[mes0] || '') : '', v = vC(d, mes0);
+      if (v <= 0 || st === 'N/A') return;
+      var cr = credLinha[normNome(d.name)] || 0, resto = v - (noFat[d.id] || 0) - cr;
+      if (resto <= 0) return;
+      var pagoL = lancadoNaLinha(DB, ano, mes0, d.name) - cr;
+      conta.push({ tipo: 'despesa', id: d.id, name: d.name, venc: d.venc || '', valor: r(resto), status: st !== 'Pago' && pagoL >= resto ? 'Pago' : st, pagoLanc: st !== 'Pago' && pagoL >= resto });
+      itC += resto;
+    });
+    Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
+      var dv = dividaPorId(DB, l.dvId);
+      if (dv && cartaoDivMeta(cfg, meta, dv)) return;
+      conta.push({ tipo: 'parcela', dvId: l.dvId, name: dv ? dv.name : String(l.name || '').replace(/^\[DIV\]\s*/, ''), venc: l.venc || '', valor: l.valor, status: l.status, k: l.k, qtd: l.qtd });
+      itC += c(l.valor);
+    });
+    var descC = descFaturaMesC(raw, alvo), contaC = c(t.despesas) + descC - fatC, ajC = contaC - itC;
+    if (Math.abs(ajC) >= 1) conta.push({ tipo: 'ajuste', name: 'Ajuste do mês', valor: r(ajC), status: '' });
+    var aberto = function (i) { return i.status !== 'Pago' && i.tipo !== 'ajuste' ? 0 : 1; };
+    conta.sort(function (a, b) { return aberto(a) - aberto(b) || b.valor - a.valor; });
+    var faltaC = 0; conta.forEach(function (i) { if (i.tipo !== 'ajuste' && i.status !== 'Pago') faltaC += c(i.valor); });
+    return {
+      entra: { total: r(c(t.renda) + c(t.sobraAnterior)), renda: t.renda, reembolsos: r(reembC), outras: r(outrasC), sobraAnterior: t.sobraAnterior, itens: rendas },
+      faturas: { total: r(fatC - descC), desconto: r(descC), itens: fats },
+      conta: { total: r(contaC), falta: r(faltaC), itens: conta },
+      reserva: t.reserva, sobra: t.saldo
+    };
+  };
+
   // Conta recorrente cobrada num cartão (ex.: Gympass da Karla, reembolsado): continua nas contas
   // recorrentes, mas entra na fatura do cartão. meta['d:<nome>'].naFatura = '<cartão>'.
   function naFaturaMeta(meta, d) { var mt = objOuVazio(meta['d:' + normNome(d && d.name)]); return chaveCartaoValida(mt.naFatura) ? mt.naFatura : null; }

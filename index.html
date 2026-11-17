@@ -151,6 +151,40 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 .stats>div{padding:15px 20px;border-left:1px solid var(--bl);min-width:0}
 .stats>div:first-child{border-left:0}
 .hero .stats{border:0;border-top:1px solid var(--bl);border-radius:0;margin:0 -26px;background:0}
+/* ===== mês em 4 blocos (Início) ===== */
+.blc{margin-bottom:20px}
+.blc-sob{background:var(--b6);color:#fff;border-radius:var(--rad);padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;margin-bottom:10px}
+.blc-sob.neg{background:var(--r6)}
+.blc-l{font-size:14px;font-weight:700}
+.blc-s{font-size:12px;opacity:.78;margin-top:2px}
+.blc-sob .hero-v,.blc-sob .hero-v.neg{color:#fff;font-size:30px;margin-top:0}
+details.blk{background:var(--wh);border:1px solid var(--bl);border-radius:var(--rad);margin-bottom:8px;overflow:hidden}
+details.blk>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+details.blk>summary::-webkit-details-marker{display:none}
+details.blk>summary .i{transition:transform var(--d2) var(--ease);color:var(--t3)}
+details.blk[open]>summary .i{transform:rotate(90deg)}
+.blk-ic{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center}.blk-ic .i3d{width:30px;height:30px}
+.blk-tx{flex:1;min-width:0}.blk-t{display:block;font-weight:700;font-size:15px}.blk-s{display:block;font-size:12px;color:var(--t3);margin-top:1px;line-height:1.35}
+.blk-v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;white-space:nowrap}.blk-v.po{color:var(--g5)}.blk-v.ne{color:var(--r5)}
+details.blk .grp-b{border-top:1px solid var(--bl)}
+.blc-k{display:flex;gap:10px 28px;flex-wrap:wrap;align-items:center;padding:6px 4px 0}
+.blc-k .kpi-v{font-size:18px}
+.tag3{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;background:var(--o50);color:var(--o6);white-space:nowrap}
+/* fatura aberta */
+.fv-cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 10px}
+.fv-cmp>div{background:var(--ap2);border-radius:var(--rs);padding:10px 12px}
+.fv-cmp span{display:block;font-size:12px;color:var(--t3)}.fv-cmp b{font-family:var(--mono);font-size:16px}
+.fv-st{grid-column:1/-1;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px}
+.fv-st.ok{background:var(--g50)!important;color:var(--g6)}.fv-st.al{background:var(--r50)!important;color:var(--r6)}
+.fv-row{display:flex;gap:8px}.fv-row .inp{flex:1}
+.fv-g{font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px}
+/* lançar: parte de alguém */
+.lc3{border:1px solid var(--bd);border-radius:var(--rad);padding:10px 12px;margin-bottom:12px}
+.lc3.on{border-color:var(--o5);background:var(--o50)}
+.lc3-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;font-size:14px;cursor:pointer}
+.lc3-h input{width:20px;height:20px;accent-color:var(--b5)}
+.lc3 .fd-row{margin-top:10px}
+.lc3-r{font-size:12.5px;color:var(--t2);margin-top:6px;line-height:1.5}.lc3-r b{color:var(--tx)}
 .hero .stats>div{padding:14px 26px}
 .sx-l{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sx-v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;letter-spacing:-.03em;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1327,6 +1361,60 @@ function linhaDesp(d,m,o){
     st==='Pago'?'<span class="row-end" title="Pago">'+ring('ok')+'</span>':o.semFim?'':'<span class="row-end">'+(st==='N/A'?'<span class="na">N/A</span>':'')+'</span>';
   return '<li class="row'+(st==='Pago'?' pago':'')+'" data-flash="d|'+esc(d.id)+'|'+m+'"><button class="row-main'+(o.semFim?' pr':'')+'" data-acao="'+(o.acao||'eU')+'" data-id="'+esc(d.id)+'" data-m="'+m+'"'+(o.tipoItem?' data-tipo="'+o.tipoItem+'"':'')+'><span class="ic">'+ic[0]+'</span><span class="row-tx"><span class="row-t">'+esc(d.name)+'</span>'+(sub.length?'<span class="row-s">'+sub.join(' · ')+'</span>':'')+'</span><span class="row-v'+(v>0?(o.po?' po':''):' mu')+'">'+(v>0?fm(v):'—')+'</span></button>'+fim+'</li>';
 }
+// ===== O mês em 4 blocos: entra − faturas − sai da conta = sobra =====
+function blk(k,ic,tit,sub,val,cls,fn){var ab=!!UI.abertos[k];GRP[k]=fn;
+  return '<details class="blk" data-grp="'+esc(k)+'"'+(ab?' open':'')+'><summary><span class="blk-ic">'+ic+'</span><span class="blk-tx"><span class="blk-t">'+tit+'</span>'+(sub?'<span class="blk-s">'+sub+'</span>':'')+'</span><span class="blk-v '+cls+'">'+val+'</span>'+svg('chev')+'</summary><div class="grp-b">'+(ab?fn():'')+'</div></details>'}
+function difBanco(total,bv){if(bv===null||bv===undefined)return null;return Fin.r(Fin.c(total)-Fin.c(bv))}
+function txtBanco(dif){if(dif===null)return '';return Math.abs(dif)<=0.1?'bate com o banco'+(dif?' (diferença de '+fm(Math.abs(dif))+')':''):(dif>0?'app tem '+fm(dif)+' a mais que o banco':'faltam '+fm(-dif)+' no app')}
+function linhaConta(i,m){var ym=Fin.ym(DB.curYear,m);
+  if(i.tipo==='parcela'){var p=PM(m).filter(function(x){return x.dvId===i.dvId})[0];return p?linhaParc(p,ym):''}
+  if(i.tipo==='ajuste')return '<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">'+esc(i.name)+'</span><span class="row-s">diferença entre o planejamento e as faturas</span></span><span class="row-v">'+fm(i.valor)+'</span></div></li>';
+  var d=achar('despesas',i.id);if(!d)return '';var pend=i.status!=='Pago',sub=[],vt=vencTxt(d.venc),lf=lancForma(d.name,m);
+  if(vt)sub.push(esc(vt));if(lf.cred)sub.push(fm(Fin.r(lf.cred))+' no cartão já está na fatura');if(!pend)sub.push(i.pagoLanc?'pago no Pix ou débito':'pago');
+  return '<li class="row'+(pend?'':' pago')+'"><button class="row-main" data-acao="eU" data-id="'+esc(d.id)+'" data-m="'+m+'"><span class="ic">'+giD(d)+'</span><span class="row-tx"><span class="row-t">'+esc(d.name)+'</span>'+(sub.length?'<span class="row-s">'+sub.join(' · ')+'</span>':'')+'</span><span class="row-v">'+fm(i.valor)+'</span></button>'+(pend?'<span class="row-end"><button class="chk" data-acao="qp" data-id="'+esc(d.id)+'" data-m="'+m+'" aria-label="Marcar '+esc(d.name)+' como pago">'+ring()+'</button></span>':'<span class="row-end" title="Pago">'+ring('ok')+'</span>')+'</li>'}
+function valorCampo(v){return v===null||v===undefined?'':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
+  var mes=MN[m].toLowerCase(),mAnt=MN[(m+11)%12].toLowerCase(),s=b.sobra,h='<section class="blc" aria-label="Resumo de '+mes+'">';
+  h+='<div class="blc-sob'+(s<0?' neg':'')+'"><div><div class="blc-l">'+(s>=0?'Vai sobrar no fim de '+mes:'Vai faltar em '+mes)+'</div><div class="blc-s">entra − faturas − sai da conta'+(b.reserva>0?' − reserva':'')+'</div></div><div class="hero-v'+(s<0?' neg':'')+'">'+fm(s)+'</div></div>';
+  var nRe=b.entra.itens.filter(function(x){return x.reembolso}).length;
+  h+=blk('blc-e',ic3d('💰'),'Entra',(nRe?'renda e reembolsos':'renda do mês')+(Fin.c(b.entra.sobraAnterior)?' + sobra de '+mAnt:''),fm(b.entra.total),'po',function(){
+    return '<ul class="lst">'+b.entra.itens.map(function(x){var it=Y().renda.filter(function(r){return r.name===x.nome})[0];
+      return '<li class="row"><button class="row-main" data-acao="eVR" data-tipo="renda" data-id="'+esc(it?it.id:'')+'" data-m="'+m+'"><span class="ic">'+gi(x.nome)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(x.nome)+'</span>'+(x.reembolso?'<span class="row-s">devolve o que foi pago no cartão</span>':'')+'</span><span class="row-v ok">'+fm(x.valor)+'</span></button></li>'}).join('')+
+      (Fin.c(b.entra.sobraAnterior)?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🐷')+'</span><span class="row-tx"><span class="row-t">Sobra de '+mAnt+'</span><span class="row-s">o que passou do mês anterior</span></span><span class="row-v'+(b.entra.sobraAnterior<0?' al':' ok')+'">'+fm(b.entra.sobraAnterior)+'</span></div></li>':'')+'</ul>'});
+  var nF=b.faturas.itens.length;
+  h+=blk('blc-f',ic3d('💳'),'Faturas',nF?plural(nF,'cartão','cartões')+' · toque para ver as compras':'nada no cartão',nF?'−'+fm(b.faturas.total):fm(0),'ne',function(){
+    if(!nF)return '<div class="vazio" style="padding:18px">Nenhuma fatura em '+mes+'.</div>';
+    return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.total,f.banco),sub=[plural(f.qtd,'item','itens')];
+      if(f.falta<=0.009)sub.push('paga');if(dif!==null)sub.push(Math.abs(dif)<=0.1?'✓ bate com o banco':'<span class="al">'+txtBanco(dif)+'</span>');
+      return '<li class="row"><button class="row-main" data-acao="fat-ver" data-k="'+f.k+'"><span class="ic">'+selo(c,30)+'</span><span class="row-tx"><span class="row-t">'+c.n+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(f.total)+'</span></button></li>'}).join('')+
+      (b.faturas.desconto>0?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">Desconto por pagar antes</span></span><span class="row-v ok">−'+fm(b.faturas.desconto)+'</span></div></li>':'')+'</ul>'});
+  h+=blk('blc-c',ic3d('🏦'),'Sai da conta',b.conta.falta>0?'falta pagar '+fm(b.conta.falta):'contas, carnês e Pix · tudo pago','−'+fm(b.conta.total),'ne',function(){
+    if(!b.conta.itens.length)return '<div class="vazio" style="padding:18px">Nada sai direto da conta em '+mes+'.</div>';
+    return '<ul class="lst">'+b.conta.itens.map(function(i){return linhaConta(i,m)}).join('')+'</ul>'});
+  if(b.reserva>0)h+='<div class="blc-s" style="color:var(--t3);margin:0 4px 6px">Guardado na reserva em '+mes+': <b>'+fm(b.reserva)+'</b></div>';
+  return h+'<!--KPIS--></section>'}
+// ===== Fatura aberta: compras uma a uma, quem devolve o quê, e o valor do banco para conferir =====
+function dataCompra(i){var mt=String(i.name||'').match(/compra em (\d\d)\/(\d\d)/);if(mt)return {dd:mt[1],mm:mt[2]};var p=String(i.data||'').split('-');return p.length===3?{dd:p[2],mm:p[1]}:null}
+function htmlFaturaVer(k,m){var c=cartaoPorChave(k),f=Fin.faturaDoMes(DB,DB.curYear,m,k),mes=MN[m].toLowerCase(),bv=Fin.valorBanco(DB,k,DB.curYear,m),dif=difBanco(f.total,bv);
+  var h='<h3 style="display:flex;align-items:center;gap:10px">'+selo(c,28)+'Fatura '+c.n+' · '+mes+'</h3>';
+  h+='<div class="fv-cmp"><div><span>No app</span><b>'+fm(f.total)+'</b></div><div><span>No banco</span><b'+(bv===null?' style="color:var(--t3)"':'')+'>'+(bv===null?'—':fm(bv))+'</b></div><div class="fv-st'+(dif===null?'':Math.abs(dif)<=0.1?' ok':' al')+'">'+(dif===null?'Digite abaixo o total que o app do banco mostra':(Math.abs(dif)<=0.1?svg('ok'):'')+txtBanco(dif))+'</div></div>';
+  h+='<div class="fd"><label for="fvB">Total da fatura no app do banco</label><div class="fv-row"><input type="text" id="fvB" class="inp" inputmode="decimal" placeholder="Ex.: 4.454,25" autocomplete="off" value="'+valorCampo(bv)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fvSalvar(\''+k+'\')}"><button type="button" class="btn btn-s" data-acao="fat-bco" data-k="'+k+'">Conferir</button></div></div>';
+  var comp=[],fixas=[],parc=[];
+  f.itens.forEach(function(i){var t3=null,nome,sub=[],ic,acao,o;
+    if(i.tipo==='lanc'){nome=String(i.name||i.grupo).split(' · ')[0];var dc=dataCompra(i);if(dc)sub.push(dc.dd+'/'+dc.mm);sub.push(esc(i.grupo));t3=Fin.terceiro(DB,Fin.chaveTerceiro('lanc',i.id));ic=gi(i.grupo)[0];acao='data-acao="lanc-ed" data-id="'+esc(i.id)+'"';o=dc?(Number(dc.mm)>m+1?Number(dc.mm)-12:Number(dc.mm))*100+Number(dc.dd):0}
+    else if(i.tipo==='parcela'){var dv=acharDiv(i.dvId);nome=nomeParc(dv?dv.name:i.name);sub.push(i.k?'parcela '+i.k+' de '+i.qtd:'parcela');t3=Fin.terceiro(DB,Fin.chaveTerceiro('parcela',i.dvId));ic=dv?giDiv(dv):gi(nome)[0];acao='data-acao="dv-edit" data-dv="'+esc(i.dvId)+'"'}
+    else{var d=achar('despesas',i.id);nome=d?d.name:i.name;sub.push(i.recorrente?'conta fixa no cartão':'previsto no cartão');t3=Fin.terceiro(DB,Fin.chaveTerceiro('despesa',nome));ic=d?giD(d):gi(nome)[0];acao='data-acao="eU" data-id="'+esc(i.id)+'" data-m="'+m+'"'}
+    if(t3)sub.push('<span class="tag3">'+esc(t3.quem)+' devolve '+fm(t3.valor)+'</span>');
+    var li='<li class="row"><button class="row-main" '+acao+'><span class="ic">'+ic+'</span><span class="row-tx"><span class="row-t">'+esc(nome)+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>';
+    (i.tipo==='lanc'?comp:i.tipo==='parcela'?parc:fixas).push({h:li,o:o||0,v:i.valor})});
+  comp.sort(function(a,b){return b.o-a.o||b.v-a.v});parc.sort(function(a,b){return b.v-a.v});
+  var sec=function(t,a){return a.length?'<div class="fv-g">'+t+'</div><ul class="lst">'+a.map(function(x){return x.h}).join('')+'</ul>':''};
+  if(!f.itens.length)h+='<div class="vazio">'+svg('card')+'<b>Nada no '+c.n+' em '+mes+'</b></div>';
+  h+=sec('Compras ('+comp.length+')',comp)+sec('Contas fixas no cartão',fixas)+sec('Parcelas ('+parc.length+')',parc);
+  return h+'<div class="mac"><button class="btn btn-s" data-acao="lc-novo" data-k="'+k+'">'+svg('plus')+'Lançar compra que faltou</button><button class="btn btn-p" onclick="cmo()">Fechar</button></div>'}
+function abrirFatura(k){var c=cartaoPorChave(k);if(!c)return;om(htmlFaturaVer(k,DB.mo))}
+function fvSalvar(k){var e=document.getElementById('fvB');if(!e)return;var t=String(e.value||'').trim(),v=t?lerValor(t):null;if(t&&(v===null||v<0)){erroCampo('fvB','Valor inválido (ex.: 4.454,25).');return}
+  Fin.setValorBanco(DB,k,DB.curYear,DB.mo,v);salvarLocal();om(htmlFaturaVer(k,DB.mo));R()}
 // Linha de parcela de divida: toque na linha abre o detalhe (parcial, desfazer); circulo paga a parcela
 function linhaParc(p,ym,o){
   o=o||{};var pend=p.status!=='Pago',nm=nomeParc(p.name),dvL=acharDiv(p.dvId),ic=dvL?[giDiv(dvL)]:gi(nm),falta=Fin.r(Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0))),sub=[],vt=vencTxt(p.venc);
@@ -1358,9 +1446,11 @@ function pgD(m){
   if(fora2>0)frase+=' <span class="hx">Renda do mês: '+fm(t.rendaOperacional)+' (fora extras e empréstimos de '+fm(fora2)+'). Só com ela, '+mes+' fecharia em <strong>'+fm(t.resultadoSemExtras)+'</strong>, sem contar a sobra.</span>';
   else if(t.despesas>t.renda)frase+=' <span class="al">Despesas passam a renda do mês em <strong>'+fm(Fin.r(Fin.c(t.despesas)-Fin.c(t.renda)))+'</strong>'+(cr>0&&s>=0?'; a sobra de '+mAnt+' cobre a diferença.':'.')+'</span>';
   var kc=pct>100?'al':pct>85?'wn':'ok';
-  h+='<section class="hero" aria-label="Resumo de '+mes+'"><div class="hero-top"><div><div class="eyb">Saldo de '+mes+'</div><div class="hero-v'+(s<0?' neg':s===0?' zero':'')+'">'+fm(s)+'</div><p class="hero-s">'+frase+'</p><button class="lk cb-lk" data-acao="conf-banco">'+svg('ok')+'Conferir com o banco</button></div>';
-  h+='<div class="hero-k"><div class="kpi"><div class="eyb">Falta pagar</div><span class="kpi-v'+(falta>0?'':' ok')+'">'+fm(falta)+'</span><span class="kpi-s">'+(itens.length?plural(itens.length,'conta'):'Tudo pago')+'</span></div>';
-  h+='<div class="kpi"><div class="eyb">Comprometido</div><span class="kpi-v '+kc+'">'+(t.renda>0?pct.toFixed(0)+'%':'—')+'</span><span class="kpi-s">da renda do mês'+(fora2>0&&pctOp>0?' · sem extras '+pctOp.toFixed(0)+'%':'')+'</span></div></div></div>';
+  h+=htmlBlocos(m);
+  h+='<section class="hero" aria-label="Resumo de '+mes+'" style="display:none"><div class="hero-top"><div><p class="hero-s">'+frase+'</p></div>';
+  h=h.replace('<!--KPIS-->','<div class="blc-k"><div class="kpi"><div class="eyb">Falta pagar</div><span class="kpi-v'+(falta>0?'':' ok')+'">'+fm(falta)+'</span><span class="kpi-s">'+(itens.length?plural(itens.length,'conta'):'Tudo pago')+'</span></div><div class="kpi"><div class="eyb">Comprometido</div><span class="kpi-v '+kc+'">'+(t.renda>0?pct.toFixed(0)+'%':'—')+'</span><span class="kpi-s">da renda do mês</span></div><button class="lk cb-lk" data-acao="conf-banco">'+svg('ok')+'Conferir com o banco</button></div>');
+  h+='<div class="hero-k"><div class="kpi-old"><div class="eyb">Falta pagar</div><span class="kpi-v'+(falta>0?'':' ok')+'">'+fm(falta)+'</span><span class="kpi-s">'+(itens.length?plural(itens.length,'conta'):'Tudo pago')+'</span></div>';
+  h+='<div class="kpi-old"><div class="eyb">Comprometido</div><span class="kpi-v '+kc+'">'+(t.renda>0?pct.toFixed(0)+'%':'—')+'</span><span class="kpi-s">da renda do mês'+(fora2>0&&pctOp>0?' · sem extras '+pctOp.toFixed(0)+'%':'')+'</span></div></div></div>';
   // regua: quanto da renda (com a sobra) vai para despesas, parcelas e o que sobra
   var base=Math.max(rT,t.despesas,1),wD=Math.max(0,t.despProprias)/base*100,wP=Math.max(0,t.parcelas)/base*100;
   h+='<div class="regua" role="img" aria-label="Despesas '+fm(t.despProprias)+', parcelas '+fm(t.parcelas)+', '+(s>=0?'sobra '+fm(s):'falta '+fm(-s))+'"><i class="rg-d" style="width:'+wD.toFixed(2)+'%"></i><i class="rg-p" style="width:'+wP.toFixed(2)+'%"></i>'+(gu>0?'<i class="rg-r" style="width:'+(gu/base*100).toFixed(2)+'%"></i>':'')+(s<0?'<i class="rg-x" style="position:absolute;right:0;top:0;width:'+(Math.min(100,-s/base*100)).toFixed(2)+'%"></i>':'')+'</div>';
@@ -1370,13 +1460,13 @@ function pgD(m){
   hs+='<div><div class="sx-l">Parcelas de dívida</div><div class="sx-v">'+fm(t.parcelas)+'</div><div class="sx-s">'+plural(pm2.length,'parcela')+' · '+pcd.toFixed(0)+'% da renda</div></div>';
   hs+='<div><div class="sx-l">Reserva acumulada</div><div class="sx-v">'+fm(re)+'</div><div class="sx-s">até '+SH[m]+'/'+esc(DB.curYear)+'</div></div></div>';
   // no celular o resumo vai para depois do que precisa de acao (a lista aparece sem rolar tanto)
-  h+=(mob()?'':hs)+'</section>';
+  h+='</section>';
   if(c.at)h+='<div class="ins al"><span class="em">'+svg('clock')+'</span><button class="lk" onclick="gp(\'dividas\')">Ver dívidas</button><strong>'+plural(c.at,'dívida')+'</strong> com parcela vencida sem pagamento.</div>';
   // o que precisa de acao
   h+='<div class="g3"><section class="card"><div class="card-h"><h2>Para pagar'+(itens.length?' <span class="tcb br2">'+itens.length+'</span>':'')+'</h2>'+(itens.length?'<span class="card-m">falta <b>'+fm(falta)+'</b></span>':'')+'</div>';
   if(itens.length)h+='<ul class="lst">'+itens.map(function(x){return x.h}).join('')+'</ul>';
   else h+='<div class="vazio">'+svg('ok')+'<b>Tudo pago em '+mes+'</b>Nenhuma conta ou parcela em aberto.</div>';
-  h+='</section>'+(mob()?hs:'')+'<div>';
+  h+='</section><div>';
   // proximo mes
   var mN=(m+1)%12,aN=m===11?String(Number(DB.curYear)+1):DB.curYear,tN=DB.years[aN]?T(mN,aN):null;
   h+='<section class="card"><div class="card-h"><h2>Em '+MN[mN].toLowerCase()+'</h2>'+(tN?'<button class="lk" onclick="nm()">Abrir'+svg('chev')+'</button>':'')+'</div>';
@@ -1466,7 +1556,7 @@ function htmlFaturas(fats,m,tit,sub){var ym=Fin.ym(DB.curYear,m),h='';if(!fats.l
   h+='<section class="card sec" id="sec-cart"><div class="card-h"><div><h2>'+tit+'</h2><div class="sec-s">'+sub+'</div></div></div>';
     fats.forEach(function(x){var f=x.f,c=x.c,paga=f.falta<=0.009,nAb=f.itens.filter(function(i){return i.status!=='Pago'}).length;
       h+='<div class="fat"><div class="fat-h">'+selo(c,36)+'<div class="fat-tx"><div class="fat-t">'+c.n+'</div><div class="fat-s">'+plural(f.itens.length,'item','itens')+(paga?' · paga'+(f.desconto>0?' com desconto de '+fm(f.desconto):''):' · falta '+fm(f.falta))+'</div></div><div class="fat-v">'+fm(f.total)+'</div></div>';
-      h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button> <button class="lk" data-acao="fat-desc" data-k="'+c.k+'">Com desconto</button>')+' <button class="lk" data-acao="fat-conf" data-k="'+c.k+'">Conferir com o banco</button></div>';
+      h+='<div class="fat-a">'+(paga?'<span class="fat-ok">'+svg('ok')+'Fatura paga</span>'+(FAT_TOK[c.k+'|'+DB.curYear+'|'+m]?' <button class="lk" data-acao="fat-desf" data-k="'+c.k+'">Desfazer pagamento</button>':''):'<button class="btn btn-p btn-sm" data-acao="fat-pagar" data-k="'+c.k+'">Pagar fatura · '+fm(f.falta)+'</button> <button class="lk" data-acao="fat-desc" data-k="'+c.k+'">Com desconto</button>')+' <button class="lk" data-acao="fat-ver" data-k="'+c.k+'">Ver fatura</button></div>';
       h+=grp('fat-'+c.k,'Ver '+plural(f.itens.length,'compra','compras')+(nAb&&!paga?' · '+nAb+' em aberto':''),'',function(){return '<ul class="lst">'+f.itens.map(function(i){
         if(i.tipo==='parcela'){var pl=PM(m).filter(function(p){return p.dvId===i.dvId})[0];return pl?linhaParc(pl,ym):''}
         if(i.tipo==='lanc'){var dd=String(i.data||'').split('-');return '<li class="row"><button class="row-main" data-acao="lanc-ed" data-id="'+esc(i.id)+'"><span class="ic">'+gi(i.grupo)[0]+'</span><span class="row-tx"><span class="row-t">'+esc(String(i.name||i.grupo).replace(/\s*·\s*compra em \d\d\/\d\d$/,''))+'</span><span class="row-s">'+esc(i.grupo)+(dd.length===3?' · '+dd[2]+'/'+dd[1]:'')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>'}
@@ -2023,7 +2113,9 @@ var ACOES={
   'lc-mais':function(){UI.lcLim=(UI.lcLim||40)+40;R()},
   'conf':function(d){var o=lcConfGet();if(o[d.key])delete o[d.key];else o[d.key]=1;lcConfSet(o);R()},
   'fat-conf':function(d){UI.lcF=d.k;UI.lcLim=40;gp('lancamentos')},
-  'lc-novo':function(d){abrirLancCartao(d.k)}
+  'lc-novo':function(d){abrirLancCartao(d.k)},
+  'fat-ver':function(d){abrirFatura(d.k)},
+  'fat-bco':function(d){fvSalvar(d.k)}
 };
 document.addEventListener('click',function(e){
   var el=e.target&&e.target.closest?e.target.closest('[data-acao]'):null;
@@ -2910,7 +3002,7 @@ function htmlLanc(){
     '<div class="fd"><label for="lcN">O que foi</label><input type="text" id="lcN" class="inp" placeholder="Ex.: Keeta, Perfume" autocomplete="off" enterkeyhint="next"></div>'+
     '<div class="fd"><label>Cartão</label>'+chipsCartao(LC.cartao||'nubank',false).replace('</div>','<button type="button" class="cart'+(LC.cartao==='outro'?' on':'')+'" role="radio" aria-checked="'+(LC.cartao==='outro')+'" onclick="lcCartao(this,\'outro\')"><span class="cart-px">'+svg('plus')+'</span><span>Outro</span></button></div>')+'<input type="text" id="lcCo" class="inp" placeholder="Loja ou outro cartão" autocomplete="off" style="margin-top:8px;'+(LC.cartao==='outro'?'':'display:none')+'"></div>'+
     '<div class="fd"><label for="lcQ">Parcelas</label><input type="number" id="lcQ" class="inp" value="1" min="1" max="72" inputmode="numeric" oninput="lcBotao()"></div>'+
-    '<div class="fd"><label>1ª parcela em</label>'+selYM('lcI',ymFaturaAberta(LC.cartao||'nubank'))+'<div class="fd-h">O mês em que a fatura ou o boleto vence.</div></div>'+
+    '<div class="fd"><label>1ª parcela em</label>'+selYM('lcI',ymFaturaAberta(LC.cartao||'nubank'))+'<div class="fd-h">O mês em que a fatura ou o boleto vence.</div></div>'+htmlParte()+
     '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" id="lcOk" onclick="salvarLanc()">Registrar</button></div>';
   var pagoCom=LC.tipo==='despesa'?'<div class="fd"><label>Pago com</label>'+chipsCartao(LC.cartao==='outro'?'':LC.cartao,true)+'</div>':
     '<div class="fd"><label>Tipo de entrada</label>'+tglGrupo('lcRt',LC.rt||'r',[['r','Renda'],['x','Extra'],['fin','Empréstimo recebido']])+'</div>';
@@ -2925,8 +3017,37 @@ function htmlLanc(){
   '<div class="fd-row"><div class="fd"><label for="lcD">Data</label><input type="date" id="lcD" value="'+dataPadrao()+'"></div><div class="fd"><label for="lcO">Observação</label><input type="text" id="lcO" placeholder="Opcional" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();salvarLanc()}"></div></div>')+
   '<div class="mac"><button class="btn btn-s" onclick="cmo()">Cancelar</button><button class="btn btn-p" id="lcOk" onclick="salvarLanc()">Lançar</button></div>';
 }
+// Compra com parte de outra pessoa: a compra entra cheia no cartão e a parte dela vira reembolso
+function nomesReembolso(){var vs={},out=[];Object.keys(DB.years).forEach(function(a){DB.years[a].renda.forEach(function(x){var mt=String(x.name).match(/^Reembolso\s*-\s*(.+)$/i);if(mt&&!vs[mt[1].toLowerCase()]){vs[mt[1].toLowerCase()]=1;out.push(mt[1].trim())}})});return out}
+function htmlParte(){return '<div class="lc3" id="lc3"><label class="lc3-h"><span>Tem parte de alguém?</span><input type="checkbox" id="lc3On" onchange="lc3Tg()"></label><div id="lc3B" style="display:none"><div class="fd-row"><div class="fd"><label for="lcTq">Quem devolve</label><input type="text" id="lcTq" class="inp" list="lcTqL" placeholder="Ex.: Mate" autocomplete="off" oninput="lc3Res()"><datalist id="lcTqL">'+nomesReembolso().map(function(n){return '<option value="'+esc(n)+'">'}).join('')+'</datalist></div><div class="fd"><label for="lcTv">Parte dela (total)</label><input type="text" id="lcTv" class="inp" inputmode="decimal" placeholder="0,00" autocomplete="off" oninput="lc3Res()"></div></div><div class="lc3-r" id="lc3R"></div></div></div>'}
+function lc3Tg(){var on=document.getElementById('lc3On').checked;document.getElementById('lc3B').style.display=on?'':'none';document.getElementById('lc3').classList.toggle('on',on);if(on){var q=document.getElementById('lcTq');if(q)q.focus()}lc3Res()}
+function lc3Res(){var e=document.getElementById('lc3R');if(!e)return;var v=lerValor((document.getElementById('lcV')||{}).value),p=lerValor((document.getElementById('lcTv')||{}).value),quem=((document.getElementById('lcTq')||{}).value||'').trim()||'a pessoa',q=Math.max(1,Math.floor(Number((document.getElementById('lcQ')||{}).value)||1)),c=cartaoPorChave(LC.cartao||'nubank');
+  if(!(v>0)||!(p>0)){e.innerHTML='A compra entra cheia no cartão e a parte de '+esc(quem)+' entra como reembolso.';return}
+  if(p>v){e.innerHTML='<span class="al">A parte de '+esc(quem)+' não pode passar do valor da compra.</span>';return}
+  e.innerHTML='O app grava: <b>'+fm(v)+'</b> na fatura'+(c?' do '+c.n:'')+' · <b>'+fm(p)+'</b> de reembolso de '+esc(quem)+(q>1?' (<b>'+fm(Fin.r(Math.round(Fin.c(p)/q)))+'</b> por mês, junto com cada parcela)':'')+' · sua parte: <b>'+fm(Fin.r(Fin.c(v)-Fin.c(p)))+'</b>'}
+function lerParte(v){var on=document.getElementById('lc3On');if(!on||!on.checked)return {ok:true,t:null};
+  var quem=(document.getElementById('lcTq').value||'').trim(),p=lerValor(document.getElementById('lcTv').value);
+  if(!quem){erroCampo('lcTq','Diga quem devolve (ex.: Mate).');return {ok:false}}
+  if(p===null||p<=0){erroCampo('lcTv','Informe a parte dela (ex.: 78,64).');return {ok:false}}
+  if(p>v){erroCampo('lcTv','A parte dela não pode passar do valor da compra.');return {ok:false}}
+  return {ok:true,t:{quem:quem.charAt(0).toUpperCase()+quem.slice(1),valor:p}}}
+// reembolso de compra à vista: entrada no mês de hoje (quando a pessoa devolve)
+function criarReembolsoAvista(l,t,desc,c){var h=new Date(),hoje=h.getFullYear()+'-'+pad2(h.getMonth()+1)+'-'+pad2(h.getDate()),nm=Fin.nomeReembolso(t.quem);
+  if(!DB.years[String(h.getFullYear())])return null;
+  var novo=!Y().renda.some(function(x){return Fin.normNome(x.name)===Fin.normNome(nm)})&&!DB.years[String(h.getFullYear())].renda.some(function(x){return Fin.normNome(x.name)===Fin.normNome(nm)});
+  var r={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000)+'r',data:hoje,ano:String(h.getFullYear()),mes:h.getMonth(),tipo:'renda',categoria:nm,valor:t.valor,obs:'Parte de '+t.quem+' em '+(desc||l.categoria)+(c?' ('+c.n+')':''),origem:'app'};
+  lancNoPlano(r,1);if(novo)Fin.marcar(DB,'rendaExtra',nm,true);
+  Fin.setTerceiro(DB,Fin.chaveTerceiro('lanc',l.id),t.quem,t.valor);
+  DB.filaLanc.push(r);return r}
+// reembolso de compra parcelada: a parte dela é dividida pelas parcelas e soma no mesmo mês de cada uma
+function reembolsoParcelas(dv,t,sinal){var q=Number(dv.qtd)||1,tot=Fin.c(t.valor),pc=Math.round(tot/q),nm=Fin.nomeReembolso(t.quem),a0=Number(ymAno(dv.inicio)),m0=Number(ymMes(dv.inicio));
+  for(var i=0;i<q;i++){var mm=m0+i,aa=a0+Math.floor(mm/12);mm=mm%12;var Yy=DB.years[String(aa)];if(!Yy)continue;
+    var it=Yy.renda.filter(function(x){return Fin.normNome(x.name)===Fin.normNome(nm)})[0];
+    if(!it){if(sinal<0)continue;it={id:novoId('r'),name:nm,tipo:'variavel',values:z12()};Yy.renda.push(it)}
+    var v=i===q-1?tot-pc*(q-1):pc;it.values[mm]=Fin.r(Math.max(0,Fin.c(it.values[mm]||0)+sinal*v))}
+  if(sinal>0)Fin.setTerceiro(DB,Fin.chaveTerceiro('parcela',dv.id),t.quem,Fin.r(pc));else Fin.setTerceiro(DB,Fin.chaveTerceiro('parcela',dv.id),null)}
 // o botao diz exatamente o que vai acontecer: "Lançar R$ 45,90"
-function lcBotao(){var b=document.getElementById('lcOk'),v=lerValor((document.getElementById('lcV')||{}).value);if(!b)return;
+function lcBotao(){var b=document.getElementById('lcOk'),v=lerValor((document.getElementById('lcV')||{}).value);if(!b)return;if(document.getElementById('lc3R'))lc3Res();
   if(LC.tipo==='divida'){var q=Math.max(1,Math.floor(Number((document.getElementById('lcQ')||{}).value)||1));b.textContent=v>0?(q===1?'Registrar 1x de '+fm(v):'Registrar '+q+'x de '+fm(Fin.r(Math.round(Fin.c(v)/q)))):'Registrar';return}
   if(LC.tipo==='reserva'){var tx=LC.rm==='r'?'Resgatar':'Guardar';b.textContent=v>0?tx+' '+fm(v):tx;return}
   b.textContent=v>0?'Lançar '+fm(v):'Lançar'}
@@ -3044,13 +3165,15 @@ function salvarDividaLanc(){
   if(!(q>=1&&q<=72)){erroCampo('lcQ','Parcelas de 1 a 72.');return}
   var ini=lerYM('lcI'),hoje=new Date(),dd=('0'+hoje.getDate()).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
   var ck=LC.cartao||'nubank',cc=cartaoDe(ck),cred=ck==='outro'?(document.getElementById('lcCo').value||'').trim():(cc?cc.n:'');
-  if(q===1&&cc){salvarCreditoAvista(v,desc,ini,ck,LC.k);return}
+  var pt=lerParte(v);if(!pt.ok)return;
+  if(q===1&&cc){salvarCreditoAvista(v,desc,ini,ck,LC.k,pt.t);return}
   var dv={id:Fin.novoId('dv'),name:nome,credor:cred,obs:'Lançada em '+dd,venc:'',total:Fin.r(Fin.c(v)),situacao:'ativa',
     parcela:Fin.r(Math.round(Fin.c(v)/q)),qtd:q,inicio:ini,pagoInicial:0,pagamentos:{},flags:[],criadoEm:hoje.toISOString()};
   var er=Fin.validarDivida(dv);if(er.length){erroCampo('lcV',er.join(' '));return}
   DB.dividas.push(dv);try{Fin.setDim(DB,refV(dv),{obrigacao:'compra',meio:'credito',cartao:cc?cc.k:'',categoria:LC.k})}catch(e){}
+  if(pt.t){dv.obs+=' · parte de '+pt.t.quem+': '+fm(pt.t.valor);reembolsoParcelas(dv,pt.t,1)}
   salvarLocal();cmo();
-  toast('Dívida registrada · '+nome+' · '+(q===1?'1x de ':q+'x de ')+fm(dv.parcela),function(){DB.dividas=DB.dividas.filter(function(x){return x.id!==dv.id});toast('Desfeito · '+nome);R()});
+  toast('Dívida registrada · '+nome+' · '+(q===1?'1x de ':q+'x de ')+fm(dv.parcela)+(pt.t?' · reembolso de '+pt.t.quem:''),function(){if(pt.t)reembolsoParcelas(dv,pt.t,-1);DB.dividas=DB.dividas.filter(function(x){return x.id!==dv.id});salvarLocal();toast('Desfeito · '+nome);R()});
   R();
 }
 // Linhas de gasto de cartão do ano (ex.: Uber, Supermercado) para somar compras à vista
@@ -3059,7 +3182,7 @@ function semSufixoCartao(n){return String(n||'').replace(/\s*\((nubank|ita[uú]|
 function acharLinhaCartao(ano,nome,ck){var n=Fin.normNome(semSufixoCartao(nome)),r=null;linhasCartaoAno(ano,ck).forEach(function(d){if(!r&&Fin.normNome(semSufixoCartao(d.name))===n)r=d});return r}
 function chipsLinhasCartao(ck){var c=cartaoDe(ck);if(!c)return '';var ls=linhasCartaoAno(DB.curYear,ck).filter(function(d){return !/limite|devolver/i.test(d.name)});if(!ls.length)return '';
   return '<div class="lc-grid lc-lin" style="margin-top:8px" aria-label="Gastos do cartão">'+ls.map(function(d){var nm=semSufixoCartao(d.name);return '<button type="button" class="lc-cat" onclick="document.getElementById(\'lcN\').value=this.dataset.n;var q=document.getElementById(\'lcQ\');if(q)q.value=1;lcBotao()" data-n="'+esc(nm)+'"><span class="e">'+catIcone(dimDe(refD(d)).categoria)+'</span><span class="n">'+esc(nm)+'</span></button>'}).join('')+'</div>'}
-function salvarCreditoAvista(v,desc,ini,ck,catK){
+function salvarCreditoAvista(v,desc,ini,ck,catK,t3){
   var ano=ymAno(ini),mes=ymMes(ini),Yy=DB.years[String(ano)],cc=cartaoDe(ck);
   if(!Yy){erroCampo('lcI','O ano '+esc(ano)+' ainda não existe no app.');return}
   var d=Fin.linhaGrupo(DB,ano,catK,true,'cartao'),nm=d.name;
@@ -3068,9 +3191,9 @@ function salvarCreditoAvista(v,desc,ini,ck,catK){
   var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(ano)),mes:mes,tipo:'despesa',categoria:nm,valor:v,
     obs:(desc||'')+(dt===hoje?'':(desc?' · ':'')+'compra em '+pad2(h.getDate())+'/'+pad2(h.getMonth()+1)),origem:'credito:'+ck};
   lancNoPlano(l,1);
-  if(!DB.filaLanc)DB.filaLanc=[];DB.filaLanc.push(l);salvarLocal();cmo();
+  if(!DB.filaLanc)DB.filaLanc=[];DB.filaLanc.push(l);var rb=t3?criarReembolsoAvista(l,t3,desc,cc):null;salvarLocal();cmo();
   var tot=0;lancTodos().forEach(function(x){if(String(x.ano)===String(l.ano)&&Number(x.mes)===mes&&Fin.normNome(x.categoria)===Fin.normNome(nm))tot+=Fin.c(x.valor)});
-  toast(nm+': +'+fm(v)+' (mês '+fm(Fin.r(tot))+')',function(){desfazerLanc(l.id)});
+  toast(nm+': +'+fm(v)+(rb?' · reembolso de '+t3.quem+' '+fm(t3.valor):' (mês '+fm(Fin.r(tot))+')'),function(){desfazerLanc(l.id);if(rb){desfazerLanc(rb.id);Fin.setTerceiro(DB,Fin.chaveTerceiro('lanc',l.id),null);salvarLocal()}});
   R();enviarFilaLanc();
 }
 function lcCat(el,i){
