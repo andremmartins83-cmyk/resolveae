@@ -1196,11 +1196,13 @@
   Fin.faturaDoMes = function (DB, ano, mes0, cartaoKey) {
     var raw = cfgDadosRO(DB), cfg = cfgNorm(raw), meta = metaMapa(raw), itens = [], totC = 0, pagoC = 0;
     if (!cartaoKey) return { itens: itens, total: 0, pago: 0, falta: 0 };
+    var fp = fatPaga(raw, cartaoKey, ym(ano, mes0));
     Fin.parcelasDoMes(DB, ano, mes0).forEach(function (l) {
       var dv = dividaPorId(DB, l.dvId);
       if (!dv || cartaoDivMeta(cfg, meta, dv) !== cartaoKey) return;
-      var valC = c(l.valor), pC = l.status === 'Pago' ? valC : Math.min(valC, c(l.pago));
-      itens.push({ tipo: 'parcela', dvId: l.dvId, name: dv.name, valor: r(valC), pago: r(pC), status: l.status, k: l.k, qtd: l.qtd });
+      var qt = Fin.quitacaoDe(dv), ant = !!qt && qt.ym === ym(ano, mes0) && l.status === 'Pago';
+      var valC = c(l.valor), pC = ant ? (fp ? valC : 0) : l.status === 'Pago' ? valC : Math.min(valC, c(l.pago));
+      itens.push({ tipo: 'parcela', dvId: l.dvId, name: dv.name, valor: r(valC), pago: r(pC), status: ant ? (fp ? 'Pago' : '') : l.status, k: l.k, qtd: l.qtd, antecipada: ant });
       totC += valC; pagoC += pC;
     });
     var Y = ano0(DB, ano);
@@ -1213,15 +1215,17 @@
       totC += valC;
       if (st === 'Pago') pagoC += valC;
     });
-    var fp = fatPaga(raw, cartaoKey, ym(ano, mes0));
     lancsCredito(DB, ym(ano, mes0), cartaoKey).forEach(function (l) {
       var vc = c(l.valor);
       itens.push({ tipo: 'lanc', id: l.id, name: String(l.obs || l.categoria || ''), grupo: l.categoria, data: l.data || '', valor: r(vc), status: fp ? 'Pago' : '' });
       totC += vc; if (fp) pagoC += vc;
     });
-    // pago = o que saiu do caixa (itens quitados − desconto da fatura antecipada)
+    // pago antes do vencimento direto no cartão (ex.: alguém devolveu pagando a fatura): abate do que falta
+    var paC = Math.min(c(objOuVazio(raw.pagoAntesFatura)[cartaoKey + '|' + ym(ano, mes0)]), Math.max(0, totC - pagoC));
+    pagoC += paC;
+    // pago = itens quitados + pago antes − desconto da fatura antecipada
     var dC = descFaturaC(raw, cartaoKey, ym(ano, mes0));
-    return { itens: itens, total: r(totC), desconto: r(dC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
+    return { itens: itens, total: r(totC), desconto: r(dC), pagoAntes: r(paC), pago: r(Math.max(0, pagoC - dC)), falta: r(Math.max(0, totC - pagoC)) };
   };
   // ===== Parte de terceiro: compra feita no cartão com parte de outra pessoa, que devolve =====
   // config 'terceiros' = { '<chave>': {quem, valor} }. Chave: 'l:<id do lançamento>', 'dv:<id da dívida>'
@@ -1239,6 +1243,14 @@
   };
   Fin.nomeReembolso = function (quem) { return 'Reembolso - ' + String(quem || '').trim(); };
   // Valor da fatura no app do banco, digitado para conferir: config 'faturasBanco' = { '<cartão>|AAAA-MM': valor }.
+  // Pagamento feito direto no cartão antes do vencimento: config 'pagoAntesFatura' = { '<cartão>|AAAA-MM': valor }.
+  Fin.pagoAntes = function (DB, cartaoKey, ano, mes0) { return r(c(objOuVazio(cfgDadosRO(DB).pagoAntesFatura)[cartaoKey + '|' + ym(ano, mes0)])); };
+  Fin.setPagoAntes = function (DB, cartaoKey, ano, mes0, valor) {
+    if (!chaveCartaoValida(cartaoKey)) throw new Error('Cartão inválido: ' + cartaoKey);
+    var mp = clone(objOuVazio(cfgDadosRO(DB).pagoAntesFatura)), k = cartaoKey + '|' + ym(ano, mes0);
+    if (!(Number(valor) > 0)) delete mp[k]; else mp[k] = r(c(valor));
+    Fin.setConfig(DB, { pagoAntesFatura: mp });
+  };
   Fin.valorBanco = function (DB, cartaoKey, ano, mes0) { var v = objOuVazio(cfgDadosRO(DB).faturasBanco)[cartaoKey + '|' + ym(ano, mes0)]; return v === undefined || v === null || v === '' ? null : r(c(v)); };
   Fin.setValorBanco = function (DB, cartaoKey, ano, mes0, valor) {
     if (!chaveCartaoValida(cartaoKey)) throw new Error('Cartão inválido: ' + cartaoKey);
@@ -1390,7 +1402,8 @@
       tok.desp.push({ ano: String(ano), id: d.id, m: mes0, antes: st });
       d.status[mes0] = 'Pago';
     });
-    if (lancsCredito(DB, alvo, cartaoKey).length && !fatPaga(cfgDadosRO(DB), cartaoKey, alvo)) {
+    var temAnt = Fin.faturaDoMes(DB, ano, mes0, cartaoKey).itens.some(function (i) { return i.antecipada; });
+    if ((lancsCredito(DB, alvo, cartaoKey).length || temAnt) && !fatPaga(cfgDadosRO(DB), cartaoKey, alvo)) {
       tok.fat = { chave: cartaoKey + '|' + alvo };
       gravarFatPaga(DB, tok.fat.chave, true);
     }

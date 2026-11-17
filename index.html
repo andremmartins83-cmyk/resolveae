@@ -1385,7 +1385,7 @@ function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
   var nF=b.faturas.itens.length;
   h+=blk('blc-f',ic3d('💳'),'Faturas',nF?plural(nF,'cartão','cartões')+' · toque para ver as compras':'nada no cartão',nF?'−'+fm(b.faturas.total):fm(0),'ne',function(){
     if(!nF)return '<div class="vazio" style="padding:18px">Nenhuma fatura em '+mes+'.</div>';
-    return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.total,f.banco),sub=[plural(f.qtd,'item','itens')];
+    return '<ul class="lst">'+b.faturas.itens.map(function(f){var c=cartaoPorChave(f.k),dif=difBanco(f.falta>0?f.falta:f.total,f.banco),sub=[plural(f.qtd,'item','itens')];if(f.falta>0.009&&Fin.c(f.falta)!==Fin.c(f.total))sub.push('a pagar '+fm(f.falta));
       if(f.falta<=0.009)sub.push('paga');if(dif!==null)sub.push(Math.abs(dif)<=0.1?'✓ bate com o banco':'<span class="al">'+txtBanco(dif)+'</span>');
       return '<li class="row"><button class="row-main" data-acao="fat-ver" data-k="'+f.k+'"><span class="ic">'+selo(c,30)+'</span><span class="row-tx"><span class="row-t">'+c.n+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(f.total)+'</span></button></li>'}).join('')+
       (b.faturas.desconto>0?'<li class="row"><div class="row-main pr"><span class="ic">'+ic3d('🧾')+'</span><span class="row-tx"><span class="row-t">Desconto por pagar antes</span></span><span class="row-v ok">−'+fm(b.faturas.desconto)+'</span></div></li>':'')+'</ul>'});
@@ -1396,14 +1396,17 @@ function htmlBlocos(m){var b=Fin.blocosMes(DB,DB.curYear,m);if(!b)return '';
   return h+'<!--KPIS--></section>'}
 // ===== Fatura aberta: compras uma a uma, quem devolve o quê, e o valor do banco para conferir =====
 function dataCompra(i){var mt=String(i.name||'').match(/compra em (\d\d)\/(\d\d)/);if(mt)return {dd:mt[1],mm:mt[2]};var p=String(i.data||'').split('-');return p.length===3?{dd:p[2],mm:p[1]}:null}
-function htmlFaturaVer(k,m){var c=cartaoPorChave(k),f=Fin.faturaDoMes(DB,DB.curYear,m,k),mes=MN[m].toLowerCase(),bv=Fin.valorBanco(DB,k,DB.curYear,m),dif=difBanco(f.total,bv);
+function htmlFaturaVer(k,m){var c=cartaoPorChave(k),f=Fin.faturaDoMes(DB,DB.curYear,m,k),mes=MN[m].toLowerCase(),bv=Fin.valorBanco(DB,k,DB.curYear,m),ap=f.falta>0?f.falta:f.total,dif=difBanco(ap,bv);
   var h='<h3 style="display:flex;align-items:center;gap:10px">'+selo(c,28)+'Fatura '+c.n+' · '+mes+'</h3>';
-  h+='<div class="fv-cmp"><div><span>No app</span><b>'+fm(f.total)+'</b></div><div><span>No banco</span><b'+(bv===null?' style="color:var(--t3)"':'')+'>'+(bv===null?'—':fm(bv))+'</b></div><div class="fv-st'+(dif===null?'':Math.abs(dif)<=0.1?' ok':' al')+'">'+(dif===null?'Digite abaixo o total que o app do banco mostra':(Math.abs(dif)<=0.1?svg('ok'):'')+txtBanco(dif))+'</div></div>';
-  h+='<div class="fd"><label for="fvB">Total da fatura no app do banco</label><div class="fv-row"><input type="text" id="fvB" class="inp" inputmode="decimal" placeholder="Ex.: 4.454,25" autocomplete="off" value="'+valorCampo(bv)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fvSalvar(\''+k+'\')}"><button type="button" class="btn btn-s" data-acao="fat-bco" data-k="'+k+'">Conferir</button></div></div>';
+  h+='<div class="fv-cmp"><div><span>'+(f.falta>0?'A pagar no app':'Total no app')+'</span><b>'+fm(ap)+'</b></div><div><span>No banco</span><b'+(bv===null?' style="color:var(--t3)"':'')+'>'+(bv===null?'—':fm(bv))+'</b></div><div class="fv-st'+(dif===null?'':Math.abs(dif)<=0.1?' ok':' al')+'">'+(dif===null?'Digite abaixo o total que o app do banco mostra':(Math.abs(dif)<=0.1?svg('ok'):'')+txtBanco(dif))+'</div></div>';
+  var pa=Fin.pagoAntes(DB,k,DB.curYear,m),nAnt=f.itens.filter(function(i){return i.antecipada}).length;
+  h+='<p class="fd-h" style="margin:0 0 10px">Compras e parcelas: <b>'+fm(f.total)+'</b>'+(pa>0?' · já pago antes no cartão: <b>'+fm(pa)+'</b>':'')+(f.pago-pa>0.009?' · pago: <b>'+fm(Fin.r(Fin.c(f.pago)-Fin.c(pa)))+'</b>':'')+(nAnt?' · '+plural(nAnt,'parcela antecipada','parcelas antecipadas')+' para esta fatura':'')+'</p>';
+  h+='<div class="fd"><label for="fvB">A pagar no app do banco</label><div class="fv-row"><input type="text" id="fvB" class="inp" inputmode="decimal" placeholder="Ex.: 4.454,25" autocomplete="off" value="'+valorCampo(bv)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fvSalvar(\''+k+'\')}"><button type="button" class="btn btn-s" data-acao="fat-bco" data-k="'+k+'">Conferir</button></div></div>';
+  h+='<div class="fd"><label for="fvP">Já pago antes do vencimento (pagamento antecipado)</label><div class="fv-row"><input type="text" id="fvP" class="inp" inputmode="decimal" placeholder="0,00" autocomplete="off" value="'+(pa>0?valorCampo(pa):'')+'"><button type="button" class="btn btn-s" data-acao="fat-pa" data-k="'+k+'">Salvar</button></div><div class="fd-h">Ex.: alguém devolveu a parte dele pagando direto no seu cartão.</div></div>';
   var comp=[],fixas=[],parc=[];
   f.itens.forEach(function(i){var t3=null,nome,sub=[],ic,acao,o;
     if(i.tipo==='lanc'){nome=String(i.name||i.grupo).split(' · ')[0];var dc=dataCompra(i);if(dc)sub.push(dc.dd+'/'+dc.mm);sub.push(esc(i.grupo));t3=Fin.terceiro(DB,Fin.chaveTerceiro('lanc',i.id));ic=gi(i.grupo)[0];acao='data-acao="lanc-ed" data-id="'+esc(i.id)+'"';o=dc?(Number(dc.mm)>m+1?Number(dc.mm)-12:Number(dc.mm))*100+Number(dc.dd):0}
-    else if(i.tipo==='parcela'){var dv=acharDiv(i.dvId);nome=nomeParc(dv?dv.name:i.name);sub.push(i.k?'parcela '+i.k+' de '+i.qtd:'parcela');t3=Fin.terceiro(DB,Fin.chaveTerceiro('parcela',i.dvId));ic=dv?giDiv(dv):gi(nome)[0];acao='data-acao="dv-edit" data-dv="'+esc(i.dvId)+'"'}
+    else if(i.tipo==='parcela'){var dv=acharDiv(i.dvId);nome=nomeParc(dv?dv.name:i.name);sub.push(i.k?'parcela '+i.k+' de '+i.qtd:'parcela');if(i.antecipada)sub.push('antecipada');t3=Fin.terceiro(DB,Fin.chaveTerceiro('parcela',i.dvId));ic=dv?giDiv(dv):gi(nome)[0];acao='data-acao="dv-edit" data-dv="'+esc(i.dvId)+'"'}
     else{var d=achar('despesas',i.id);nome=d?d.name:i.name;sub.push(i.recorrente?'conta fixa no cartão':'previsto no cartão');t3=Fin.terceiro(DB,Fin.chaveTerceiro('despesa',nome));ic=d?giD(d):gi(nome)[0];acao='data-acao="eU" data-id="'+esc(i.id)+'" data-m="'+m+'"'}
     if(t3)sub.push('<span class="tag3">'+esc(t3.quem)+' devolve '+fm(t3.valor)+'</span>');
     var li='<li class="row"><button class="row-main" '+acao+'><span class="ic">'+ic+'</span><span class="row-tx"><span class="row-t">'+esc(nome)+'</span><span class="row-s">'+sub.join(' · ')+'</span></span><span class="row-v">'+fm(i.valor)+'</span></button></li>';
@@ -1416,6 +1419,8 @@ function htmlFaturaVer(k,m){var c=cartaoPorChave(k),f=Fin.faturaDoMes(DB,DB.curY
 function abrirFatura(k){var c=cartaoPorChave(k);if(!c)return;om(htmlFaturaVer(k,DB.mo))}
 function fvSalvar(k){var e=document.getElementById('fvB');if(!e)return;var t=String(e.value||'').trim(),v=t?lerValor(t):null;if(t&&(v===null||v<0)){erroCampo('fvB','Valor inválido (ex.: 4.454,25).');return}
   Fin.setValorBanco(DB,k,DB.curYear,DB.mo,v);salvarLocal();om(htmlFaturaVer(k,DB.mo));R()}
+function fvPago(k){var e=document.getElementById('fvP');if(!e)return;var t=String(e.value||'').trim(),v=t?lerValor(t):0;if(t&&(v===null||v<0)){erroCampo('fvP','Valor inválido (ex.: 151,01).');return}
+  Fin.setPagoAntes(DB,k,DB.curYear,DB.mo,v);salvarLocal();om(htmlFaturaVer(k,DB.mo));R()}
 // Linha de parcela de divida: toque na linha abre o detalhe (parcial, desfazer); circulo paga a parcela
 function linhaParc(p,ym,o){
   o=o||{};var pend=p.status!=='Pago',nm=nomeParc(p.name),dvL=acharDiv(p.dvId),ic=dvL?[giDiv(dvL)]:gi(nm),falta=Fin.r(Math.max(0,Fin.c(p.valor)-Fin.c(p.pago||0))),sub=[],vt=vencTxt(p.venc);
@@ -2116,7 +2121,8 @@ var ACOES={
   'fat-conf':function(d){UI.lcF=d.k;UI.lcLim=40;gp('lancamentos')},
   'lc-novo':function(d){abrirLancCartao(d.k)},
   'fat-ver':function(d){abrirFatura(d.k)},
-  'fat-bco':function(d){fvSalvar(d.k)}
+  'fat-bco':function(d){fvSalvar(d.k)},
+  'fat-pa':function(d){fvPago(d.k)}
 };
 document.addEventListener('click',function(e){
   var el=e.target&&e.target.closest?e.target.closest('[data-acao]'):null;
