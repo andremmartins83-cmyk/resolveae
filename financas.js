@@ -656,22 +656,39 @@
   // ===================== classificação: cartões, dívidas, despesas =====================
   // Cartões de crédito da pessoa: lista em config.cartoes ([{k, n}]). Conta sem a lista
   // (a planilha original, criada antes de existir a escolha) continua com os 3 de sempre.
-  Fin.CARTOES_PADRAO = [{ k: 'nubank', n: 'Nubank' }, { k: 'itau', n: 'Itaú' }, { k: 'santander', n: 'Santander' }];
-  Fin.CARTOES = Fin.CARTOES_PADRAO.map(function (x) { return { k: x.k, n: x.n }; });
+  // dia = dia do vencimento da fatura (1 a 31; opcional). Os 3 originais: Nubank 3, Santander 8, Itaú 10 (André, 20/11).
+  Fin.CARTOES_PADRAO = [{ k: 'nubank', n: 'Nubank', dia: 3 }, { k: 'itau', n: 'Itaú', dia: 10 }, { k: 'santander', n: 'Santander', dia: 8 }];
+  function diaValido(d) { var n = Number(d); return (n >= 1 && n <= 31 && Math.floor(n) === n) ? n : 0; }
+  function copiaCartao(x) { var o = { k: x.k, n: x.n }, d = diaValido(x.dia); if (d) o.dia = d; return o; }
+  Fin.CARTOES = Fin.CARTOES_PADRAO.map(copiaCartao);
   function cartoesValidos(l) {
     var out = [], visto = {};
     (Array.isArray(l) ? l : []).forEach(function (x) {
       if (!x || typeof x !== 'object') return;
       var k = String(x.k || '').trim(), n = String(x.n || '').trim();
       if (!/^[a-z0-9-]{1,40}$/.test(k) || k === 'outro' || !n || visto[k]) return;
-      visto[k] = true; out.push({ k: k, n: n.slice(0, 40) });
+      visto[k] = true; out.push(copiaCartao({ k: k, n: n.slice(0, 40), dia: x.dia }));
     });
     return out;
   }
   // lista de cartões da conta (cópia): config.cartoes ou os 3 originais
   Fin.cartoesDe = function (DB) {
     var raw = cfgDadosRO(DB);
-    return Array.isArray(raw.cartoes) ? cartoesValidos(raw.cartoes) : Fin.CARTOES_PADRAO.map(function (x) { return { k: x.k, n: x.n }; });
+    return Array.isArray(raw.cartoes) ? cartoesValidos(raw.cartoes) : Fin.CARTOES_PADRAO.map(copiaCartao);
+  };
+  // troca o dia do vencimento de um cartão (0 ou vazio = sem dia); grava a lista da conta
+  Fin.setDiaCartao = function (DB, k, dia) {
+    var l = Fin.cartoesDe(DB), achou = false;
+    l.forEach(function (c) { if (c.k === k) { achou = true; var d = diaValido(dia); if (d) c.dia = d; else delete c.dia; } });
+    if (!achou) throw new Error('Cartão não encontrado: ' + k);
+    return Fin.setCartoes(DB, l);
+  };
+  // data do vencimento da fatura do mês (AAAA-MM-DD) ou '' se o cartão não tem dia; dia 31 em mês curto vira o último dia
+  Fin.vencFatura = function (cartao, ano, m) {
+    var d = cartao ? diaValido(cartao.dia) : 0;
+    if (!d) return '';
+    var ult = new Date(Number(ano), m + 1, 0).getDate(), dd = Math.min(d, ult);
+    return String(ano) + '-' + (m < 9 ? '0' : '') + (m + 1) + '-' + (dd < 10 ? '0' : '') + dd;
   };
   // a conta já escolheu os próprios cartões?
   Fin.temCartoesProprios = function (DB) { return Array.isArray(cfgDadosRO(DB).cartoes); };
