@@ -3333,7 +3333,7 @@ function htmlLanc(){
   if(LC.tipo==='divida')return topo+'<p class="ms">À vista (1x) soma na linha da categoria, no mês da fatura, e entra na fatura do cartão. Parcelado vira dívida, com uma parcela por mês.</p>'+
     '<div class="fd"><label for="lcV">Valor total</label><input type="text" id="lcV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" enterkeyhint="next" oninput="lcBotao()"></div>'+
     '<div class="fd"><label for="lcF">Categoria</label><input type="search" id="lcF" class="inp" placeholder="Buscar categoria" oninput="lcFiltrar()" autocomplete="off" enterkeyhint="search"><div class="lc-grid" id="lcG" role="listbox" aria-label="Categorias">'+grpBtns()+'</div></div>'+
-    '<div class="fd"><label for="lcN">O que foi</label><input type="text" id="lcN" class="inp" placeholder="Ex.: Keeta, Perfume" autocomplete="off" enterkeyhint="next"></div>'+
+    '<div class="fd"><label for="lcN">O que foi</label><input type="text" id="lcN" class="inp" placeholder="Ex.: Padaria, Perfume" autocomplete="off" enterkeyhint="next"></div>'+
     '<div class="fd"><label>Cartão</label>'+chipsCartao(LC.cartao||cartaoPadrao(),false).replace('</div>','<button type="button" class="cart'+(LC.cartao==='outro'?' on':'')+'" role="radio" aria-checked="'+(LC.cartao==='outro')+'" onclick="lcCartao(this,\'outro\')"><span class="cart-px">'+svg('plus')+'</span><span>Outro</span></button></div>')+'<input type="text" id="lcCo" class="inp" placeholder="Loja ou outro cartão" autocomplete="off" style="margin-top:8px;'+(LC.cartao==='outro'?'':'display:none')+'"></div>'+
     '<div class="fd"><label for="lcQ">Parcelas</label><input type="number" id="lcQ" class="inp" value="1" min="1" max="72" inputmode="numeric" oninput="lcBotao()"></div>'+
     '<div class="fd"><label>1ª parcela em</label>'+selYM('lcI',ymFaturaAberta(LC.cartao||cartaoPadrao()))+'<div class="fd-h">O mês em que a fatura ou o boleto vence.</div></div>'+htmlParte()+
@@ -3344,7 +3344,7 @@ function htmlLanc(){
   '<div class="fd"><label for="lcV">Valor</label><input type="text" id="lcV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" enterkeyhint="next" oninput="lcBotao()" onkeydown="lcEnter(event)"></div>'+
   (LC.tipo==='despesa'?
   '<div class="fd"><label for="lcF">Categoria</label><input type="search" id="lcF" class="inp" placeholder="Buscar categoria" oninput="lcFiltrar()" autocomplete="off" enterkeyhint="search"><div class="lc-grid" id="lcG" role="listbox" aria-label="Categorias">'+grpBtns()+'</div></div>'+
-  '<div class="fd"><label for="lcO">O que foi</label><input type="text" id="lcO" class="inp" placeholder="Ex.: Keeta, Cabeleireiro Laís" autocomplete="off" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();salvarLanc()}"></div>'+
+  '<div class="fd"><label for="lcO">O que foi</label><input type="text" id="lcO" class="inp" placeholder="Ex.: Padaria, Cabeleireiro" autocomplete="off" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();salvarLanc()}"></div>'+
   '<div class="fd"><label for="lcD">Data</label><input type="date" id="lcD" value="'+dataPadrao()+'"></div>'
   :
   '<div class="fd"><label for="lcF">Conta do planejamento</label><input type="search" id="lcF" class="inp" placeholder="Buscar categoria" oninput="lcFiltrar()" autocomplete="off" enterkeyhint="search"><div class="lc-grid" id="lcG" role="listbox" aria-label="Categorias">'+catBtns()+'</div></div>'+
@@ -3407,7 +3407,7 @@ function faltaPagarC(m){var y=Y(),f=0;
 function rendasConf(m){return Y().renda.filter(function(r){return (r.values[m]||0)>0&&Fin.normNome(r.name)!==Fin.normNome(NOME_DIF)})}
 function abrirConfBanco(){var m=DB.mo,mes=MN[m].toLowerCase(),rs=rendasConf(m),fp=faltaPagarC(m);
   om('<h3>Conferir com o banco</h3><p class="ms">O saldo de '+mes+' é o que vai sobrar no fim do mês. Diga quanto tem hoje e o que ainda vai cair; o app acerta a diferença.</p>'+
-  '<div class="fd"><label for="cbV">Quanto tem agora nas contas</label><input type="text" id="cbV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" oninput="cbCalc()"><div class="fd-h">Some as contas do casal e o saldo dos cartões de benefício (vale e transporte), que também entram como renda. Não conte as caixinhas da reserva.</div></div>'+
+  '<div class="fd"><label for="cbV">Quanto tem agora nas contas</label><input type="text" id="cbV" class="lc-val" placeholder="0,00" inputmode="decimal" autocomplete="off" oninput="cbCalc()"><div class="fd-h">Some todas as suas contas e o saldo dos cartões de benefício (vale e transporte), que também entram como renda. Não conte as caixinhas da reserva.</div></div>'+
   '<div class="fd"><label>Marque o que ainda vai cair na conta até o fim de '+mes+'</label><div class="cb-lst">'+(rs.length?rs.map(function(r,i){return '<label class="cb-r"><input type="checkbox" id="cbR'+i+'" data-v="'+Fin.c(r.values[m])+'" onchange="cbCalc()"><span>'+esc(r.name)+'</span><b>'+fm(r.values[m])+'</b></label>'}).join(''):'<p class="fd-h">Nenhuma entrada prevista em '+mes+'.</p>')+'</div></div>'+
   '<div class="cb-r cb-fx"><span>Ainda falta pagar em '+mes+'</span><b>- '+fm(Fin.r(fp))+'</b></div>'+
   '<div class="ins" id="cbRes" role="status"><span class="em">'+svg('info')+'</span>Digite o valor que tem nas contas.</div>'+

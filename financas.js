@@ -1358,7 +1358,7 @@
     };
   };
 
-  // Conta recorrente cobrada num cartão (ex.: Gympass da Karla, reembolsado): continua nas contas
+  // Conta recorrente cobrada num cartão (ex.: academia de outra pessoa, reembolsada): continua nas contas
   // recorrentes, mas entra na fatura do cartão. meta['d:<nome>'].naFatura = '<cartão>'.
   function naFaturaMeta(meta, d) { var mt = objOuVazio(meta['d:' + normNome(d && d.name)]); return chaveCartaoValida(mt.naFatura) ? mt.naFatura : null; }
   Fin.naFatura = function (DB, d) { return naFaturaMeta(metaMapa(cfgDadosRO(DB)), d); };
