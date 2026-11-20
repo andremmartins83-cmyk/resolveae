@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resolve Aê · Como criar a sua planilha</title>
+<link rel="icon" href="favicon-32.png">
+<meta name="theme-color" content="#313E27">
+<style>
+@font-face{font-family:Creato;src:url(CreatoDisplay-Medium.otf);font-weight:500}
+@font-face{font-family:Creato;src:url(CreatoDisplay-Black.otf);font-weight:900}
+:root{--vd:#313E27;--vd2:#4F7D2F;--fd:#F6F5F1;--tx:#1B1B1B;--t2:#5A5F55;--bl:#E3E1DA;--rx:#2A1050;--al:#FFF4D6;--alb:#E8C766}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fd);color:var(--tx);font:16px/1.6 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.topo{background:var(--vd);color:#fff;padding:28px 20px 30px}
+.topo .w{max-width:760px;margin:0 auto;display:flex;gap:16px;align-items:center}
+.topo img{width:56px;height:56px;border-radius:14px;flex:0 0 auto}
+h1{font-family:Creato,sans-serif;font-weight:900;font-size:28px;line-height:1.15;margin:0}
+.topo p{margin:4px 0 0;color:#D6DCCF;font-size:15px}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 22px}
+.resumo div{background:#fff;border:1px solid var(--bl);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--t2)}
+.resumo b{display:block;color:var(--tx);font-size:17px}
+.passo{background:#fff;border:1px solid var(--bl);border-radius:18px;padding:20px 20px 8px;margin:0 0 16px}
+.passo h2{font-family:Creato,sans-serif;font-weight:900;font-size:21px;margin:0 0 4px;display:flex;gap:12px;align-items:center}
+.n{width:34px;height:34px;border-radius:50%;background:var(--vd2);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}
+.passo .sub{color:var(--t2);margin:0 0 12px;font-size:14px}
+ol{padding-left:22px;margin:0 0 14px}li{margin:0 0 8px}
+.bt{display:inline-block;background:var(--vd);color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;margin:4px 0 14px}
+.bt:hover{background:var(--vd2)}
+kbd,.ui{font:600 14px/1 -apple-system,"Segoe UI",Arial,sans-serif;background:#F1F3F4;border:1px solid #DADCE0;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.ui.az{background:#0B57D0;color:#fff;border-color:#0B57D0}
+.alerta{background:var(--al);border:1px solid var(--alb);border-radius:12px;padding:12px 14px;margin:0 0 14px;font-size:15px}
+.alerta b{color:#7A4B00}
+/* desenhos simplificados das telas do Google (não são prints) */
+.tela{border:1px solid #DADCE0;border-radius:12px;background:#fff;margin:4px 0 16px;overflow:hidden;font:13px/1.4 Arial,sans-serif;color:#202124}
+.tela .bar{background:#F8F9FA;border-bottom:1px solid #DADCE0;padding:7px 12px;display:flex;gap:14px;flex-wrap:wrap;color:#444}
+.tela .bar .on{background:#E8F0FE;color:#0B57D0;border-radius:4px;padding:0 6px;font-weight:700}
+.tela .menu{margin:0 0 10px 120px;width:190px;border:1px solid #DADCE0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:4px 0;background:#fff}
+.tela .menu div{padding:6px 12px}.tela .menu .on{background:#E8F0FE;font-weight:700}
+.tela .corpo{padding:12px 14px}
+.campo{border:1px solid #9AA0A6;border-radius:6px;padding:8px 10px;margin:12px 0 4px;position:relative}
+.campo small{position:absolute;top:-9px;left:8px;background:#fff;padding:0 4px;color:#5F6368;font-size:11px}
+.campo.ok{border:2px solid #188038}
+.dica{color:#5F6368;font-size:12px}
+.marca{outline:3px solid #F29900;outline-offset:2px;border-radius:4px}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fim{background:var(--rx);color:#fff;border-radius:18px;padding:20px;margin:24px 0 16px}
+.fim h2{font-family:Creato,sans-serif;font-weight:900;margin:0 0 8px;font-size:21px}
+.fim p{margin:0 0 8px;color:#E6DDF7}
+details{background:#fff;border:1px solid var(--bl);border-radius:14px;padding:12px 16px;margin:0 0 10px}
+summary{font-weight:700;cursor:pointer}
+details p{margin:10px 0 4px;color:#333}
+@media(max-width:600px){h1{font-size:23px}.resumo,.duas{grid-template-columns:1fr}.tela .menu{margin-left:20px}}
+</style>
+</head>
+<body>
+<header class="topo"><div class="w"><img src="icone-192.png" alt=""><div><h1>Crie a sua planilha do Resolve Aê</h1><p>Uma vez só, de preferência no computador. Depois é só usar no celular.</p></div></div></header>
+<main>
+<div class="resumo">
+  <div><b>15 minutos</b>uma vez só</div>
+  <div><b>Grátis</b>usa a sua conta Google</div>
+  <div><b>Só seus dados</b>ninguém mais acessa</div>
+</div>
+
+<p>O Resolve Aê guarda tudo numa planilha Google <b>que fica na sua conta</b>. Quem criou o app não vê nem acessa os seus dados. Você vai: copiar a planilha modelo, ligar o app a ela e abrir o link no celular.</p>
+
+<section class="passo">
+  <h2><span class="n">1</span>Copie a planilha modelo</h2>
+  <p class="sub">Entre antes na sua conta Google (Gmail).</p>
+  <a class="bt" href="https://docs.google.com/spreadsheets/d/1UsnzYh1U8dF39yIya3zlz5sKQVPjHAxjFtdYEI3n3II/copy" target="_blank" rel="noopener">Copiar a planilha modelo</a>
+  <ol>
+    <li>Na tela "Copiar documento", clique em <span class="ui az">Fazer uma cópia</span>.</li>
+    <li>O aviso amarelo dizendo que o "arquivo do Apps Script" também vai ser copiado é normal: é ele que conversa com o app.</li>
+    <li>A cópia abre sozinha e fica no seu Google Drive. Se aparecer algum aviso do Gemini, pode fechar.</li>
+  </ol>
+</section>
+
+<section class="passo">
+  <h2><span class="n">2</span>Ligue a planilha ao app</h2>
+  <p class="sub">É a parte mais técnica, mas é só seguir os cliques. No computador fica mais fácil.</p>
+  <ol>
+    <li>Na sua cópia, menu <span class="ui">Extensões</span> › <span class="ui">Apps Script</span>. Abre uma aba nova com o código (não mexa nele).</li>
+  </ol>
+  <div class="tela" aria-hidden="true"><div class="bar"><span>Arquivo</span><span>Editar</span><span>Ver</span><span>Inserir</span><span class="on">Extensões</span><span>Ajuda</span><span>Resolve Aê</span></div><div class="menu"><div>Complementos</div><div>Macros</div><div class="on">Apps Script</div></div></div>
+  <ol start="2">
+    <li>No canto de cima, à direita, clique no botão azul <span class="ui az">Implantar ▾</span> › <span class="ui">Nova implantação</span>.</li>
+    <li>Ao lado de "Selecione o tipo", clique na <b>engrenagem ⚙</b> › <span class="ui">App da Web</span>.</li>
+    <li>Preencha assim:</li>
+  </ol>
+  <div class="tela" aria-hidden="true"><div class="bar"><b>Nova implantação</b></div><div class="corpo">
+    <div class="campo ok"><small>Executar como</small>Eu (seu e-mail)</div><div class="dica">Deixe como está.</div>
+    <div class="campo ok marca"><small>Quem pode acessar</small>Qualquer pessoa</div><div class="dica">Troque "Somente eu" por <b>Qualquer pessoa</b>.</div>
+  </div></div>
+  <div class="alerta"><b>Atenção:</b> escolha <b>"Qualquer pessoa"</b>, e não "Qualquer pessoa com uma Conta do Google". Com a opção errada o app não consegue falar com a planilha. Mesmo assim, ninguém entra sem o seu link: ele tem uma chave que só a sua planilha conhece.</div>
+  <ol start="5">
+    <li>Clique em <span class="ui az">Implantar</span> e depois em <span class="ui az">Autorizar acesso</span>. Escolha a sua conta Google.</li>
+    <li>Vai aparecer <b>"O Google não verificou este app"</b>. É esperado, porque o "app" é a sua própria planilha. Clique em <span class="ui">Avançado</span> › <span class="ui">Acessar Resolve Aê API (não seguro)</span> › <span class="ui az">Permitir</span>.</li>
+    <li>No fim aparece o <b>URL do app da Web</b> (termina em <code>/exec</code>). Clique em <span class="ui">Copiar</span> por garantia e depois em <span class="ui az">Concluído</span>.</li>
+  </ol>
+</section>
+
+<section class="passo">
+  <h2><span class="n">3</span>Pegue o seu link de acesso</h2>
+  <ol>
+    <li>Volte para a aba da planilha e recarregue a página (<kbd>F5</kbd>).</li>
+    <li>No menu <span class="ui">Resolve Aê</span> (ao lado de Ajuda), clique em <span class="ui">Meu link de acesso</span>.</li>
+    <li>Se o Google pedir autorização de novo, autorize do mesmo jeito do passo 2. Se ele pedir o "URL do app da Web", cole o endereço que você copiou.</li>
+    <li>Aparece o seu link. Clique em <span class="ui">Copiar link</span> ou em <span class="ui">Abrir o app</span>.</li>
+  </ol>
+  <div class="alerta"><b>Esse link é a sua senha.</b> Quem tiver o link vê e altera as suas finanças. Mande só para você mesmo.</div>
+</section>
+
+<section class="passo">
+  <h2><span class="n">4</span>Abra no celular</h2>
+  <ol>
+    <li>Mande o link para você mesmo (WhatsApp "conversa comigo" ou e-mail) e abra no celular.</li>
+    <li>Coloque o app na tela inicial:</li>
+  </ol>
+  <div class="duas">
+    <div class="tela"><div class="bar"><b>iPhone (Safari)</b></div><div class="corpo">Botão Compartilhar <b>⬆</b> › <b>Adicionar à Tela de Início</b>. Ao abrir pelo ícone, o app pede o link uma vez: cole o mesmo link.</div></div>
+    <div class="tela"><div class="bar"><b>Android (Chrome)</b></div><div class="corpo">Menu <b>⋮</b> › <b>Instalar app</b> (ou "Adicionar à tela inicial").</div></div>
+  </div>
+  <ol start="3">
+    <li>No primeiro acesso, o app pergunta quais cartões de crédito você usa. Dá para mudar depois em <b>Mais › Ajustes</b>.</li>
+  </ol>
+</section>
+
+<div class="fim">
+  <h2>Pronto. Por onde começar</h2>
+  <p>1. Em <b>Contas</b>, coloque a sua renda e as contas fixas do mês (aluguel, luz, internet...).</p>
+  <p>2. Use o botão do raio <b>⚡</b> para lançar cada gasto ou entrada do dia a dia.</p>
+  <p>3. O <b>Início</b> mostra quanto vai sobrar no fim do mês.</p>
+</div>
+
+<h2 style="font-family:Creato,sans-serif;font-weight:900;font-size:21px;margin:26px 0 12px">Dúvidas comuns</h2>
+<details><summary>O app diz "Chave não confere" ou "A planilha não reconheceu esse link"</summary><p>O link foi copiado pela metade. Gere de novo pelo menu <b>Resolve Aê › Meu link de acesso</b> e use o botão <b>Copiar link</b>.</p></details>
+<details><summary>Os meus dados ficam onde?</summary><p>Na sua cópia da planilha, no seu Google Drive. O app só mostra e grava nela. Você pode abrir a planilha quando quiser, mas não apague nem renomeie as abas que o app criou.</p></details>
+<details><summary>Mandei o link para alguém sem querer. E agora?</summary><p>Troque a chave: na planilha, abra a aba <b>Config</b>, apague o valor ao lado de <b>chaveAcesso</b> e use de novo o menu <b>Resolve Aê › Meu link de acesso</b>. Sai um link novo e o antigo para de funcionar. Abra o link novo nos seus aparelhos.</p></details>
+<details><summary>Fiz besteira nos dados. Tem volta?</summary><p>Tem. Antes de cada gravação a planilha guarda uma cópia. Use o menu <b>Resolve Aê › Restaurar backup...</b> e escolha o mais recente antes do problema.</p></details>
+<details><summary>Escolhi "Qualquer pessoa com uma Conta do Google" sem querer</summary><p>No Apps Script: <b>Implantar › Gerenciar implantações</b> › lápis ✎ › "Quem pode acessar": <b>Qualquer pessoa</b> › <b>Implantar</b>. O link continua o mesmo.</p></details>
+<p class="dica" style="margin-top:24px">Os desenhos desta página são simplificados: as telas do Google podem mudar um pouco de cor e de posição.</p>
+</main>
+</body>
+</html>

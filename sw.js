@@ -1,7 +1,7 @@
 // Service worker do Resolve Aê
 // Regra: guarda a casca do app para abrir offline, mas NUNCA guarda dado da planilha.
 // Ao publicar mudanca no app, suba o numero da versao abaixo.
-const VERSAO = 'resolveae-v44';
+const VERSAO = 'resolveae-v45';
 const CASCA = [
   './',
   './index.html',
@@ -32,9 +32,9 @@ self.addEventListener('activate', e => {
   );
 });
 
-// URL que carrega chave (?k=) ou aponta outra API (?api=) nunca vai para o cache
+// URL que carrega chave (?k=), conta de outra pessoa (?conta=) ou outra API (?api=) nunca vai para o cache
 function temSegredo(url) {
-  return url.searchParams.has('k') || url.searchParams.has('api') || url.searchParams.has('action');
+  return url.searchParams.has('k') || url.searchParams.has('conta') || url.searchParams.has('api') || url.searchParams.has('action');
 }
 
 self.addEventListener('fetch', e => {

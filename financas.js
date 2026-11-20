@@ -654,14 +654,50 @@
   };
 
   // ===================== classificação: cartões, dívidas, despesas =====================
-  Fin.CARTOES = [{ k: 'nubank', n: 'Nubank' }, { k: 'itau', n: 'Itaú' }, { k: 'santander', n: 'Santander' }];
+  // Cartões de crédito da pessoa: lista em config.cartoes ([{k, n}]). Conta sem a lista
+  // (a planilha original, criada antes de existir a escolha) continua com os 3 de sempre.
+  Fin.CARTOES_PADRAO = [{ k: 'nubank', n: 'Nubank' }, { k: 'itau', n: 'Itaú' }, { k: 'santander', n: 'Santander' }];
+  Fin.CARTOES = Fin.CARTOES_PADRAO.map(function (x) { return { k: x.k, n: x.n }; });
+  function cartoesValidos(l) {
+    var out = [], visto = {};
+    (Array.isArray(l) ? l : []).forEach(function (x) {
+      if (!x || typeof x !== 'object') return;
+      var k = String(x.k || '').trim(), n = String(x.n || '').trim();
+      if (!/^[a-z0-9-]{1,40}$/.test(k) || k === 'outro' || !n || visto[k]) return;
+      visto[k] = true; out.push({ k: k, n: n.slice(0, 40) });
+    });
+    return out;
+  }
+  // lista de cartões da conta (cópia): config.cartoes ou os 3 originais
+  Fin.cartoesDe = function (DB) {
+    var raw = cfgDadosRO(DB);
+    return Array.isArray(raw.cartoes) ? cartoesValidos(raw.cartoes) : Fin.CARTOES_PADRAO.map(function (x) { return { k: x.k, n: x.n }; });
+  };
+  // a conta já escolheu os próprios cartões?
+  Fin.temCartoesProprios = function (DB) { return Array.isArray(cfgDadosRO(DB).cartoes); };
+  // passa a usar os cartões da conta em todo o motor (o app chama depois de carregar os dados)
+  Fin.usarCartoes = function (DB) { Fin.CARTOES = Fin.cartoesDe(DB); return Fin.CARTOES; };
+  // grava a lista de cartões da conta e já passa a usar (muta DB)
+  Fin.setCartoes = function (DB, lista) {
+    Fin.setConfig(DB, { cartoes: cartoesValidos(lista) });
+    return Fin.usarCartoes(DB);
+  };
+  // nome inteiro dentro do texto, sem pegar pedaço de palavra ('Inter' não casa com 'Internet')
+  function contemPalavra(n, p) {
+    if (!p) return false;
+    for (var i = n.indexOf(p); i >= 0; i = n.indexOf(p, i + 1)) {
+      var a = i === 0 ? '' : n.charAt(i - 1), b = n.charAt(i + p.length);
+      if (!/[a-z0-9]/.test(a) && !/[a-z0-9]/.test(b)) return true;
+    }
+    return false;
+  }
   // chave do cartão citado no texto ('Limite Itaú', 'Mercado (Nubank)', 'nubank') ou null
   function cartaoDe(txt) {
     var n = normNome(txt);
     if (!n) return null;
     for (var i = 0; i < Fin.CARTOES.length; i++) {
       var cd = Fin.CARTOES[i];
-      if (n === cd.k || n.indexOf(normNome(cd.n)) >= 0) return cd.k;
+      if (n === cd.k || contemPalavra(n, normNome(cd.n))) return cd.k;
     }
     return null;
   }
