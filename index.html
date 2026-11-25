@@ -3544,6 +3544,16 @@ function lcCat(el,i){
   for(var k=0;k<b.length;k++){b[k].classList.remove('on');b[k].setAttribute('aria-selected','false')}
   el.classList.add('on');el.setAttribute('aria-selected','true');
   var er=document.getElementById('fdErr');if(er)er.remove();
+  lcRtSync();
+}
+// Entrada: o "Tipo de entrada" acompanha a classificação que a conta já tem (antes ficava sempre em Renda
+// e, ao lançar, tirava a conta de Empréstimo recebido ou de Extra sem a pessoa pedir)
+function lcRtSync(){
+  if(LC.tipo!=='renda'||!LC.cat)return;
+  var h=document.getElementById('lcRt');if(!h||!h.previousElementSibling)return;
+  var cfg=Fin.config(DB),v=Fin.temNome(cfg.rendaFinanc,LC.cat)?'fin':Fin.temNome(cfg.rendaExtra,LC.cat)?'x':'r';
+  var b=h.previousElementSibling.querySelectorAll('.tgl-o'),ord=['r','x','fin'],i=ord.indexOf(v);
+  if(b[i])tglC(b[i],v,'lcRt');
 }
 function lcNovaCat(){
   document.getElementById('lcG').innerHTML='<div class="lc-nc"><input type="text" id="lcNC" class="inp" placeholder="'+(LC.tipo==='reserva'?'Ex.: Viagem de férias':'Nome da categoria')+'" enterkeyhint="done" onkeydown="if(event.key===\'Enter\'){event.preventDefault();lcConfCat()}"><button type="button" class="btn btn-p" style="flex:0 0 auto" onclick="lcConfCat()">Usar</button></div>';
@@ -3568,13 +3578,41 @@ function salvarLanc(){
   if(p.length!==3){erroCampo('lcD','Data inválida.');return}
   var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,
     tipo:LC.tipo,categoria:LC.cat,valor:v,obs:(document.getElementById('lcO').value||'').trim(),origem:'app'+(LC.tipo==='despesa'&&cartaoDe(LC.cartao)?':'+LC.cartao:'')};
+  var rtE=document.getElementById('lcRt'),rt=rtE?rtE.value:'r';
+  // Entrada numa conta que já tem valor previsto sem lançamento: o valor previsto pode ser dinheiro que
+  // já entrou (ex.: parte de um empréstimo antigo) ou só a previsão deste mesmo dinheiro. Só a pessoa sabe.
+  if(LC.tipo==='renda'&&Fin.ym(l.ano,l.mes)<=hojeYM()){
+    var pa=previstoAberto(l),vc=Fin.c(v);
+    if(pa.aberto>0&&pa.aberto!==vc){
+      var mesN=MN[l.mes].toLowerCase(),tot=Fin.r(pa.plano+vc);
+      dlg('Já tem valor previsto','Em <b>'+esc(l.categoria)+'</b> de '+mesN+' o planejamento tem <b>'+fm(Fin.r(pa.aberto))+'</b> que não veio de lançamento.<br><br>'+
+        '<b>Já entrou, somar:</b> esse valor é dinheiro que já entrou; o mês fica com '+fm(tot)+'.<br>'+
+        '<b>Substituir:</b> este lançamento é o próprio valor previsto; o mês fica com '+fm(Fin.r(Math.max(pa.plano,pa.outros+vc)))+'.',
+        [{t:'Cancelar'},{t:'Substituir',fn:function(){concluirLanc(l,rt,false)}},{t:'Já entrou, somar',cls:'btn-p',fn:function(){concluirLanc(l,rt,true)}}]);
+      return}
+  }
+  concluirLanc(l,rt,false);
+}
+// Previsto da conta no mês x o que já veio de lançamentos (aberto = previsto que não veio de lançamento)
+function previstoAberto(l){
+  var y=DB.years[String(l.ano)],renda=String(l.tipo||'despesa')==='renda',m=Number(l.mes),n=Fin.normNome(l.categoria),it=null;
+  if(y)(renda?y.renda:y.despesas).forEach(function(x){if(!it&&Fin.normNome(x.name)===n)it=x});
+  var plano=it?Fin.c(it.values[m]||0):0,outros=0;
+  lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
+  return {plano:plano,outros:outros,aberto:Math.max(0,plano-outros)};
+}
+// Lançamentos somados ao previsto (escolha "Já entrou, somar"): desfazer tira só o valor deles
+var SOMA_PLANO={};
+function concluirLanc(l,rt,soma){
+  var v=l.valor;
+  if(soma)SOMA_PLANO[l.id]=1;
   var noPlano=lancNoPlano(l,1);
-  if(LC.tipo==='renda'){var rtE=document.getElementById('lcRt'),rt=rtE?rtE.value:'r';if(rt!=='r'||Fin.temNome(Fin.config(DB).rendaExtra,l.categoria)||Fin.temNome(Fin.config(DB).rendaFinanc,l.categoria)){Fin.marcar(DB,'rendaExtra',l.categoria,rt==='x');Fin.marcar(DB,'rendaFinanc',l.categoria,rt==='fin')}}
+  if(l.tipo==='renda'){if(rt!=='r'||Fin.temNome(Fin.config(DB).rendaExtra,l.categoria)||Fin.temNome(Fin.config(DB).rendaFinanc,l.categoria)){Fin.marcar(DB,'rendaExtra',l.categoria,rt==='x');Fin.marcar(DB,'rendaFinanc',l.categoria,rt==='fin')}}
   if(!DB.filaLanc)DB.filaLanc=[];
   DB.filaLanc.push(l);
   salvarLocal();cmo();
-  var resta='';if(!noPlano){var itP=(LC.tipo==='renda'?Y().renda:Y().despesas).filter(function(x){return x.name===LC.cat})[0];if(itP){var rl=0;lancDoMes(l.ano,l.mes,LC.tipo).forEach(function(x){if(x.categoria===LC.cat)rl+=Fin.c(x.valor)});var rs2=Fin.c(itP.values[l.mes]||0)-rl;resta=rs2>=0?' · dentro do previsto, restam '+fm(Fin.r(rs2)):' · passou do previsto em '+fm(Fin.r(-rs2))}}
-  toast((LC.tipo==='renda'?'Entrada lançada: ':'Gasto lançado: ')+LC.cat+' · '+fm(v)+(noPlano?' · somado ao planejamento':resta),function(){desfazerLanc(l.id)});
+  var resta='',Yl=DB.years[String(l.ano)]||Y();if(!noPlano){var itP=(l.tipo==='renda'?Yl.renda:Yl.despesas).filter(function(x){return x.name===l.categoria})[0];if(itP){var rl=0;lancDoMes(l.ano,l.mes,l.tipo).forEach(function(x){if(x.categoria===l.categoria)rl+=Fin.c(x.valor)});var rs2=Fin.c(itP.values[l.mes]||0)-rl;resta=rs2>=0?' · dentro do previsto, restam '+fm(Fin.r(rs2)):' · passou do previsto em '+fm(Fin.r(-rs2))}}
+  toast((l.tipo==='renda'?'Entrada lançada: ':'Gasto lançado: ')+l.categoria+' · '+fm(v)+(noPlano?' · somado ao planejamento':resta),function(){desfazerLanc(l.id)});
   R();
   enviarFilaLanc();
 }
@@ -3640,6 +3678,9 @@ function lancNoPlano(l,sinal){
   for(i=0;i<lista.length;i++)if(Fin.normNome(lista[i].name)===n){it=lista[i];break}
   var outros=0;lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
   var cred=/^credito:/.test(String(l.origem||''))||Fin.ym(l.ano,Number(l.mes))>hojeYM(),plano=it?Fin.c(it.values[m]||0):0,vc=Fin.c(l.valor),aditivo=!renda&&it&&it.tipo!=='fixa'&&it.status&&it.status[m]==='Pago';
+  if(SOMA_PLANO[l.id]&&it){
+    if(sinal>0){it.values[m]=Fin.r(plano+vc);return true}
+    delete SOMA_PLANO[l.id];it.values[m]=Fin.r(Math.max(0,plano-vc));return true}
   if(sinal>0){
     if(!it||plano===outros||aditivo){
       if(!it){it=renda?{id:novoId('r'),name:l.categoria,tipo:'variavel',values:z12()}:{id:novoId('d'),name:l.categoria,venc:'',tipo:'variavel',values:z12(),status:s12()};lista.push(it)}
