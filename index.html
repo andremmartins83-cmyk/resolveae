@@ -983,7 +983,13 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 function hora(){var d=new Date();return('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
 // Assinatura so dos DADOS (anos, dividas, divergencias). Estado de tela (mes, pagina, filtros) nao dispara envio.
 function assinatura(){try{return Fin.assinatura(DB)}catch(e){return ''}}
-function salvarLocal(){lsSet('modelo',JSON.stringify(DB))}
+function salvarLocal(){return lsSet('modelo',JSON.stringify(DB))}
+// A6: MARCA EXPLÍCITA de alteração pendente. Só a aba que fez a alteração escreve, e só se a cópia local foi
+// gravada; guarda o hash da planilha em que a alteração se apoia e a impressão EXATA da cópia alterada. Ao reabrir,
+// só vale se a cópia local for exatamente aquela (outra aba ou armazenamento cheio invalidam a marca). Auditoria C1/C2.
+function impressao(s){s=String(s||'');var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16)+':'+s.length}
+function marcarPendente(){if(!SYNC.pronto||!SYNC.baseHash||SYNC.migracaoPendente||/^v1:/.test(SYNC.ultimoEnviado))return;lsSet('pendente',JSON.stringify({b:SYNC.baseHash,h:impressao(assinatura())}))}
+function limparPendente(){lsSet('pendente','')}
 
 function syncUI(estado,msg){
   SYNC.estado=estado;SYNC.msg=msg;
@@ -1022,7 +1028,7 @@ function aplicarNuvem(r,silencioso){
     if(!DB.years[DB.curYear])estadoTelaHoje(DB);
     NASCEU_VAZIO=false;   // agora a copia deste aparelho veio da planilha
   }
-  DB.lancamentos=r.lancamentos||[];
+  DB.lancamentos=semExcluidos(r.lancamentos);
   SYNC.baseTs=r.ts||Date.now();
   SYNC.baseHash=r.hash||'';
   SYNC.alterouOffline=false;
@@ -1039,6 +1045,7 @@ function aplicarNuvem(r,silencioso){
   }else{
     SYNC.migracaoPendente=false;SYNC.ultimoEnviado=depois;
   }
+  limparPendente();
   salvarLocal();
   if(!silencioso||antes!==depois)R();
   if(SYNC.migracaoPendente)syncUI('erro','Planilha no formato antigo — toque aqui');
@@ -1053,6 +1060,19 @@ function puxarDaNuvem(silencioso){
   return apiGet('load').then(function(r){
     SYNC.chaveInvalida=!!(r&&r.erro==='chave-invalida');
     if(!r||!r.ok){syncUI('erro',SYNC.chaveInvalida?'Chave não confere — toque aqui':'Erro ao carregar');return false}
+    // A6: o app foi fechado com alteração que não chegou à planilha
+    if(SYNC.pendenteBoot){
+      var pb=SYNC.pendenteBoot;SYNC.pendenteBoot='';
+      if(r.hash&&r.hash===pb&&!nuvemParaV2(r).v1){
+        // planilha igual à base desta cópia: nada a perguntar, só falta enviar o que ficou pendente
+        DB.lancamentos=semExcluidos(r.lancamentos);
+        SYNC.baseHash=r.hash;SYNC.baseTs=r.ts||Date.now();SYNC.baseItens=contarItens(nuvemParaV2(r));
+        SYNC.pronto=true;SYNC.carregouNuvem=true;SYNC.alterouOffline=false;   // mexer antes da resposta não é conflito aqui (auditoria M3)
+        salvarLocal();R();agendarEnvio();
+        return true;
+      }
+      SYNC.alterouOffline=true;   // planilha mudou noutro aparelho: pergunta qual versão fica (fluxo existente)
+    }
     // Mexeu no app antes da nuvem responder: nao sobrescreve nada sem perguntar
     if(SYNC.alterouOffline){NUVEM_PENDENTE=r;syncUI('erro','Duas versões — toque aqui');avisarConflito();return false}
     // Mexeu DURANTE a leitura, ou ha envio pendente: esta leitura ja nasceu velha, descarta.
@@ -1068,10 +1088,11 @@ function puxarDaNuvem(silencioso){
 }
 
 function sv(){
-  salvarLocal();
+  var gravou=salvarLocal();
   if(BOOTANDO||!KEY)return;
   if(assinatura()===SYNC.ultimoEnviado)return;
   if(!SYNC.pronto){SYNC.alterouOffline=true;syncUI('erro','Alterado antes de conectar');return}
+  if(gravou)marcarPendente();
   agendarEnvio();
 }
 
@@ -1109,7 +1130,7 @@ function enviarAgora(){
       var semEdicao=assinatura()===a;if(adotarIds(r.idsGerados)&&semEdicao)a=assinatura();
       SYNC.ultimoEnviado=a;SYNC.baseTs=r.ts||Date.now();SYNC.baseHash=r.hash||'';SYNC.baseItens=itens;SYNC.hashServidor='';
       SYNC.liberouPerda=false;SYNC.migracaoPendente=false;SYNC.migracaoOk=false;
-      if(assinatura()!==a)agendarEnvio();else syncUI('ok','Salvo '+hora());
+      if(assinatura()!==a){marcarPendente();agendarEnvio()}else{limparPendente();syncUI('ok','Salvo '+hora())}
     }
     else if(r&&r.erro==='conflito'){NUVEM_PENDENTE=null;SYNC.hashServidor=r.hashServidor||'';syncUI('erro','Conflito — toque aqui');avisarConflito()}
     else if(r&&r.erro==='payload-v1'){syncUI('erro','Planilha recusou o formato antigo');avisar('Envio recusado','A planilha recusou o envio no formato antigo. Recarregue o app.')}
@@ -3085,11 +3106,13 @@ function sEditarLanc(){var id=EDIT&&EDIT.lanc,l=null;lancTodos().forEach(functio
   var catN=(document.getElementById('elC')||{}).value||l.categoria;
   var novo={id:'l'+(tsLanc(l)||Date.now())+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,tipo:l.tipo,categoria:catN,valor:v,
     obs:(document.getElementById('elO').value||'').trim(),origem:(String(l.tipo||'despesa')!=='renda'&&cartaoDe(LC.cartao))?(((document.getElementById('elF')||{}).value==='credito'?'credito:':'app:')+LC.cartao):'app'};
-  var estavaNaFila=naFila(l.id);
-  lancNoPlano(l,-1);
+  var estavaNaFila=naFila(l.id),eraSoma=tagLanc(l)==='m'||Fin.somadoAoPlano(DB,l.id);
+  tirarDoPlano(l);
   DB.lancamentos=(DB.lancamentos||[]).filter(function(x){return String(x.id)!==id});tirarDaFila(id);
-  if(KEY&&!estavaNaFila)apiPost('delLancamento',{id:id}).catch(function(){});
-  lancNoPlano(novo,1);
+  if(KEY&&!estavaNaFila)pedirExclusao(id);
+  // editar um lançamento somado continua somado, se ficou na mesma conta e no mesmo mês (A1; auditoria M1)
+  if(eraSoma&&Fin.normNome(novo.categoria)===Fin.normNome(l.categoria)&&String(novo.ano)===String(l.ano)&&Number(novo.mes)===Number(l.mes))novo.id=comTag(novo.id,'m');
+  somarNoPlano(novo);
   if(!DB.filaLanc)DB.filaLanc=[];DB.filaLanc.push(novo);
   salvarLocal();cmo();toast('Lançamento salvo · '+novo.categoria+' · '+fm(v));R();enviarFilaLanc();
 }
@@ -3377,8 +3400,8 @@ function lerParte(v){var on=document.getElementById('lc3On');if(!on||!on.checked
 function criarReembolsoAvista(l,t,desc,c){var h=new Date(),hoje=h.getFullYear()+'-'+pad2(h.getMonth()+1)+'-'+pad2(h.getDate()),nm=Fin.nomeReembolso(t.quem);
   if(!DB.years[String(h.getFullYear())])return null;
   var novo=!Y().renda.some(function(x){return Fin.normNome(x.name)===Fin.normNome(nm)})&&!DB.years[String(h.getFullYear())].renda.some(function(x){return Fin.normNome(x.name)===Fin.normNome(nm)});
-  var r={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000)+'r',data:hoje,ano:String(h.getFullYear()),mes:h.getMonth(),tipo:'renda',categoria:nm,valor:t.valor,obs:'Parte de '+t.quem+' em '+(desc||l.categoria)+(c?' ('+c.n+')':''),origem:'app'};
-  lancNoPlano(r,1);if(novo)Fin.marcar(DB,'rendaExtra',nm,true);
+  var r={id:idLanc('r'),data:hoje,ano:String(h.getFullYear()),mes:h.getMonth(),tipo:'renda',categoria:nm,valor:t.valor,obs:'Parte de '+t.quem+' em '+(desc||l.categoria)+(c?' ('+c.n+')':''),origem:'app'};
+  somarNoPlano(r);if(novo)Fin.marcar(DB,'rendaExtra',nm,true);
   Fin.setTerceiro(DB,Fin.chaveTerceiro('lanc',l.id),t.quem,t.valor);
   DB.filaLanc.push(r);return r}
 // reembolso de compra parcelada: a parte dela é dividida pelas parcelas e soma no mesmo mês de cada uma
@@ -3530,9 +3553,9 @@ function salvarCreditoAvista(v,desc,ini,ck,catK,t3){
   var d=Fin.linhaGrupo(DB,ano,catK,true,'cartao'),nm=d.name;
   // o servidor guarda o mês pela data: compra que cai na fatura de outro mês fica no dia 1 desse mês (a data real vai na observação)
   var h=new Date(),hoje=h.getFullYear()+'-'+pad2(h.getMonth()+1)+'-'+pad2(h.getDate()),dt=hoje.slice(0,7)===ini?hoje:ini+'-01';
-  var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(ano)),mes:mes,tipo:'despesa',categoria:nm,valor:v,
+  var l={id:idLanc(),data:dt,ano:String(Number(ano)),mes:mes,tipo:'despesa',categoria:nm,valor:v,
     obs:(desc||'')+(dt===hoje?'':(desc?' · ':'')+'compra em '+pad2(h.getDate())+'/'+pad2(h.getMonth()+1)),origem:'credito:'+ck};
-  lancNoPlano(l,1);
+  somarNoPlano(l);
   if(!DB.filaLanc)DB.filaLanc=[];DB.filaLanc.push(l);var rb=t3?criarReembolsoAvista(l,t3,desc,cc):null;salvarLocal();cmo();
   var tot=0;lancTodos().forEach(function(x){if(String(x.ano)===String(l.ano)&&Number(x.mes)===mes&&Fin.normNome(x.categoria)===Fin.normNome(nm))tot+=Fin.c(x.valor)});
   toast(nm+': +'+fm(v)+(rb?' · reembolso de '+t3.quem+' '+fm(t3.valor):' (mês '+fm(Fin.r(tot))+')'),function(){desfazerLanc(l.id);if(rb){desfazerLanc(rb.id);Fin.setTerceiro(DB,Fin.chaveTerceiro('lanc',l.id),null);salvarLocal()}});
@@ -3576,7 +3599,7 @@ function salvarLanc(){
   if(LC.tipo==='despesa'&&LC.k){var dt0=(document.getElementById('lcD').value||dataPadrao()).slice(0,4);if(!DB.years[dt0]){erroCampo('lcD','O ano '+esc(dt0)+' ainda não existe no app.');return}LC.cat=Fin.linhaGrupo(DB,dt0,LC.k,true).name}
   var dt=document.getElementById('lcD').value||dataPadrao(),p=dt.split('-');
   if(p.length!==3){erroCampo('lcD','Data inválida.');return}
-  var l={id:'l'+Date.now()+'-'+Math.floor(Math.random()*10000),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,
+  var l={id:idLanc(),data:dt,ano:String(Number(p[0])),mes:Number(p[1])-1,
     tipo:LC.tipo,categoria:LC.cat,valor:v,obs:(document.getElementById('lcO').value||'').trim(),origem:'app'+(LC.tipo==='despesa'&&cartaoDe(LC.cartao)?':'+LC.cartao:'')};
   var rtE=document.getElementById('lcRt'),rt=rtE?rtE.value:'r';
   // Entrada numa conta que já tem valor previsto sem lançamento: o valor previsto pode ser dinheiro que
@@ -3601,12 +3624,12 @@ function previstoAberto(l){
   lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
   return {plano:plano,outros:outros,aberto:Math.max(0,plano-outros)};
 }
-// Lançamentos somados ao previsto (escolha "Já entrou, somar"): desfazer tira só o valor deles
-var SOMA_PLANO={};
+// Lançamentos somados ao previsto (escolha "Já entrou, somar"): a marca fica na config (Fin.somadoAoPlano),
+// grava junto com o planejado e sobrevive a fechar o app; desfazer/excluir/editar tira só o valor deles (A1)
 function concluirLanc(l,rt,soma){
   var v=l.valor;
-  if(soma)SOMA_PLANO[l.id]=1;
-  var noPlano=lancNoPlano(l,1);
+  if(soma)l.id=comTag(l.id,'m');
+  var noPlano=somarNoPlano(l);
   if(l.tipo==='renda'){if(rt!=='r'||Fin.temNome(Fin.config(DB).rendaExtra,l.categoria)||Fin.temNome(Fin.config(DB).rendaFinanc,l.categoria)){Fin.marcar(DB,'rendaExtra',l.categoria,rt==='x');Fin.marcar(DB,'rendaFinanc',l.categoria,rt==='fin')}}
   if(!DB.filaLanc)DB.filaLanc=[];
   DB.filaLanc.push(l);
@@ -3633,6 +3656,9 @@ function enviarFilaLanc(){
   syncUI('enviando','Salvando lançamento…');
   apiPost('addLancamento',l).then(function(r){
     LANC_ENVIANDO=false;
+    // Excluído ou editado no aparelho enquanto o envio estava em curso: não volta para a lista;
+    // se a planilha chegou a gravar (ou pode ter gravado), a exclusão vai para a fila de exclusões
+    if(!naFila(l.id)){if(!(r&&r.erro&&ERRO_LANC_PERMANENTE.test(String(r.erro))))pedirExclusao(l.id);salvarLocal();if(DB.filaLanc.length)enviarFilaLanc();else syncUI('ok','Sincronizado '+hora());return}
     if(r&&r.ok){
       // Remove POR ID: se algo foi excluido da fila durante o envio, shift() tiraria o errado
       tirarDaFila(l.id);
@@ -3643,10 +3669,11 @@ function enviarFilaLanc(){
       syncUI('ok','Lançamento salvo '+hora());
       if(DB.pg==='controle')R();
     }else if(r&&r.erro&&ERRO_LANC_PERMANENTE.test(String(r.erro))){
-      tirarDaFila(l.id);salvarLocal();
+      // A6: o lançamento não existe na planilha, então o que ele mexeu no planejado também sai
+      tirarDaFila(l.id);tirarDoPlano(l);salvarLocal();
       syncUI('erro','Lançamento recusado pela planilha');
-      avisar('Lançamento não foi salvo','A planilha recusou <strong>'+esc(l.categoria)+' · '+fm(l.valor)+' · '+fmDia(l.data)+'</strong> ('+esc(r.erro)+'). Ele saiu da fila; lance de novo se precisar.');
-      if(DB.pg==='controle')R();
+      avisar('Lançamento não foi salvo','A planilha recusou <strong>'+esc(l.categoria)+' · '+fm(l.valor)+' · '+fmDia(l.data)+'</strong> ('+esc(r.erro)+'). Ele saiu da fila e o valor saiu do planejamento; lance de novo se precisar.');
+      R();
       if(DB.filaLanc.length)enviarFilaLanc();
     }else{
       syncUI('erro','Lançamento na fila — tentando de novo');
@@ -3654,6 +3681,8 @@ function enviarFilaLanc(){
     }
   }).catch(function(){
     LANC_ENVIANDO=false;
+    // excluído no aparelho durante o envio que falhou: a planilha pode ter gravado; garante a exclusão lá
+    if(!naFila(l.id)){pedirExclusao(l.id);if(DB.filaLanc.length){enviarFilaLanc();return}}
     syncUI('offline','Lançamento na fila — envio quando voltar');
     setTimeout(enviarFilaLanc,20000);
   });
@@ -3672,30 +3701,105 @@ function delLanc(id){
 // - previsto em aberto: o lancamento consome o previsto; so o que passar dele sobe o planejamento;
 // - conta FIXA paga (aluguel etc.): nao soma de novo (evita contar o mesmo pagamento duas vezes).
 // Excluir faz o caminho inverso pelas mesmas regras.
+// Efeito do lançamento no planejado. O TIPO fica no próprio id (permanente, não ocupa a config):
+//   e = só consumiu o previsto (desfazer não mexe no planejado)
+//   s = somou numa linha que é a soma dos lançamentos, ou conta variável já paga pela pessoa (regra antiga desfaz)
+//   m = "Já entrou, somar" (desfazer tira o valor inteiro, sem prazo)
+//   c = passou do previsto (o excedente em centavos fica na config, Fin.gravarEfeito)
+//   a = conta variável já paga pela pessoa: somou o valor inteiro (desfazer tira o valor inteiro)
+// Status: guarda o status de antes do 1º lançamento que o mudou ('b:<linha>|<mês>'); ao tirar um lançamento que
+// mudou o status, o status passa a ser o do lançamento mais recente que ficou e mudou o status, ou o de antes.
+// Mudança de status também fica na config (s0 antes, s1 depois). Sem tipo no id = lançamento de antes desta
+// versão: regra antiga. Antes, a regra inversa zerava um previsto que o lançamento só tinha consumido.
+var EFEITO_K='s';
+function idLanc(sufixo){return 'l'+Date.now()+'-'+Math.floor(Math.random()*10000)+(sufixo||'')}
+function tagLanc(l){var x=/^l\d{13}-\d+([esmca])r?$/.exec(String(l&&l.id||''));return x?x[1]:null}
+function comTag(id,t){var s0=String(id),r=/r$/.test(s0)?'r':'';return s0.replace(/[esmca]?r?$/,'')+t+r}
+function chaveBase(it,l){return 'b:'+it.id+'|'+Fin.ym(l.ano,Number(l.mes))}
+function limiteEfeito(){return Date.now()-180*864e5}   // registros dos últimos 180 dias (e no máximo Fin.EFEITO_MAX)
+function mesmoGrupo(a,b){return String(a.ano)===String(b.ano)&&Number(a.mes)===Number(b.mes)&&String(a.tipo||'despesa')===String(b.tipo||'despesa')&&Fin.normNome(a.categoria)===Fin.normNome(b.categoria)}
+function mudouStatus(x){var e=Fin.efeitoDe(DB,x.id);return !!(e&&e.s1!==undefined)}
+function linhaDoLanc(l){var y=DB.years[String(l.ano)];if(!y)return null;var lista=String(l.tipo||'despesa')==='renda'?y.renda:y.despesas,n=Fin.normNome(l.categoria);for(var i=0;i<lista.length;i++)if(Fin.normNome(lista[i].name)===n)return lista[i];return null}
+function somarNoPlano(l){var m=Number(l.mes),it0=linhaDoLanc(l),v0=it0?Fin.c(it0.values[m]||0):0,s0=it0&&it0.status?(it0.status[m]||''):'';
+  var pre=tagLanc(l)==='m',mudou=lancNoPlano(l,1),it=linhaDoLanc(l),t=pre?'m':(mudou?EFEITO_K:'e');
+  l.id=comTag(l.id,t);
+  if(mudou&&it){var rec={ym:Fin.ym(l.ano,m),t:Date.now()};
+    if(t==='c')rec.d=Fin.c(it.values[m]||0)-v0;
+    if(it.status&&(it.status[m]||'')!==s0){rec.s0=s0;rec.s1=it.status[m]||'';if(!Fin.efeitoDe(DB,chaveBase(it,l)))Fin.gravarEfeito(DB,chaveBase(it,l),{s:s0,t:Date.now()},limiteEfeito())}
+    if(rec.d!==undefined||rec.s1!==undefined)Fin.gravarEfeito(DB,l.id,rec,limiteEfeito())}
+  return mudou}
+function tirarDoPlano(l){
+  var t=tagLanc(l),rec=Fin.efeitoDe(DB,l.id),it=linhaDoLanc(l),m=Number(l.mes);
+  if(!t&&!Fin.somadoAoPlano(DB,l.id))return lancNoPlano(l,-1);   // lançamento de antes desta versão: regra antiga
+  Fin.tirarEfeito(DB,l.id);
+  if(!t)return lancNoPlano(l,-1);
+  if(!it)return false;
+  var resto=lancTodos().filter(function(x){return String(x.id)!==String(l.id)&&mesmoGrupo(x,l)});
+  if(t==='m'||t==='a')it.values[m]=Fin.r(Math.max(0,Fin.c(it.values[m]||0)-Fin.c(l.valor)));
+  else if(t==='c'){if(rec&&rec.d!==undefined)it.values[m]=Fin.r(Math.max(0,Fin.c(it.values[m]||0)-rec.d));else lancNoPlano(l,-1)}
+  else if(t==='s')lancNoPlano(l,-1);
+  // status: o do lançamento mais recente que fica e mudou o status; sem nenhum, o de antes do 1º que mudou
+  if(rec&&rec.s1!==undefined&&it.status){
+    var mud=resto.map(function(x){return Fin.efeitoDe(DB,x.id)}).filter(function(e){return e&&e.s1!==undefined}).sort(function(a,b){return (a.t||0)-(b.t||0)}),base=Fin.efeitoDe(DB,chaveBase(it,l));
+    it.status[m]=mud.length?mud[mud.length-1].s1:(base?base.s:(rec.s0||''))}
+  if(!resto.length)Fin.tirarEfeito(DB,chaveBase(it,l));
+  // vários lançamentos na mesma previsão: o excedente dos que passaram do previsto é recalculado sem o que saiu
+  var cons=resto.filter(function(x){return tagLanc(x)==='c'}).map(function(x){return {l:x,e:Fin.efeitoDe(DB,x.id)}});
+  if(cons.length&&cons.every(function(r){return r.e&&r.e.d!==undefined})){
+    var v2=Fin.c(it.values[m]||0),exc=0,soma=0,sc=0;
+    cons.forEach(function(r){exc+=r.e.d});
+    resto.forEach(function(x){var tx=tagLanc(x);if(tx==='s'||tx==='m'||tx==='a')soma+=Fin.c(x.valor);else if(tx==='c'||tx==='e')sc+=Fin.c(x.valor)});
+    var base=v2-exc-soma,novo=Math.max(0,sc-Math.max(0,base));
+    if(novo<exc){var dif=exc-novo;it.values[m]=Fin.r(v2-dif);
+      cons.sort(function(a,b){return String(b.l.id).localeCompare(String(a.l.id))}).forEach(function(r){if(dif<=0)return;var q=Math.min(dif,r.e.d);r.e.d-=q;dif-=q;Fin.gravarEfeito(DB,r.l.id,r.e,limiteEfeito())})}
+  }
+  return true}
 function lancNoPlano(l,sinal){
   var y=DB.years[String(l.ano)];if(!y)return false;
   var renda=String(l.tipo||'despesa')==='renda',lista=renda?y.renda:y.despesas,m=Number(l.mes),n=Fin.normNome(l.categoria),it=null,i;
   for(i=0;i<lista.length;i++)if(Fin.normNome(lista[i].name)===n){it=lista[i];break}
   var outros=0;lancTodos().forEach(function(x){if(String(x.id)!==String(l.id)&&String(x.ano)===String(l.ano)&&Number(x.mes)===m&&String(x.tipo||'despesa')===String(l.tipo||'despesa')&&Fin.normNome(x.categoria)===n)outros+=Fin.c(x.valor)});
   var cred=/^credito:/.test(String(l.origem||''))||Fin.ym(l.ano,Number(l.mes))>hojeYM(),plano=it?Fin.c(it.values[m]||0):0,vc=Fin.c(l.valor),aditivo=!renda&&it&&it.tipo!=='fixa'&&it.status&&it.status[m]==='Pago';
-  if(SOMA_PLANO[l.id]&&it){
+  EFEITO_K='s';
+  var pagoPorLanc=aditivo&&lancTodos().some(function(x){if(String(x.id)===String(l.id)||!mesmoGrupo(x,l))return false;var e=Fin.efeitoDe(DB,x.id);return !!(e&&e.s1==='Pago')});
+  if((tagLanc(l)==='m'||Fin.somadoAoPlano(DB,l.id))&&it){
     if(sinal>0){it.values[m]=Fin.r(plano+vc);return true}
-    delete SOMA_PLANO[l.id];it.values[m]=Fin.r(Math.max(0,plano-vc));return true}
+    Fin.marcarSomadoAoPlano(DB,l.id,false);it.values[m]=Fin.r(Math.max(0,plano-vc));return true}
+  if(sinal<0)Fin.marcarSomadoAoPlano(DB,l.id,false);
   if(sinal>0){
     if(!it||plano===outros||aditivo){
+      if((it&&plano>0&&plano===outros&&!aditivo)||pagoPorLanc)EFEITO_K='c';   // previsão já consumida (ou Pago posto por lançamento): consumo acima do previsto
+      else if(aditivo)EFEITO_K='a';   // conta variável paga pela pessoa: soma o valor inteiro
       if(!it){it=renda?{id:novoId('r'),name:l.categoria,tipo:'variavel',values:z12()}:{id:novoId('d'),name:l.categoria,venc:'',tipo:'variavel',values:z12(),status:s12()};lista.push(it)}
       it.values[m]=Fin.r(plano+vc);if(!renda)it.status[m]=cred?'':'Pago';return true}
-    if(outros+vc>plano){it.values[m]=Fin.r(outros+vc);if(!renda&&it.tipo!=='fixa')it.status[m]=cred?'':'Pago';return true}
+    if(outros+vc>plano){EFEITO_K='c';it.values[m]=Fin.r(outros+vc);if(!renda&&it.tipo!=='fixa')it.status[m]=cred?'':'Pago';return true}
     return false}
   if(!it||!(aditivo||plano===outros+vc))return false;
   var nv=Math.max(0,plano-vc);it.values[m]=Fin.r(nv);if(!renda&&nv===0&&it.status[m]==='Pago')it.status[m]='';return true}
 function confDelLanc(id){
   var estavaNaFila=naFila(id),lx=null;lancTodos().forEach(function(x){if(String(x.id)===String(id))lx=x});
-  if(lx)lancNoPlano(lx,-1);
+  if(lx)tirarDoPlano(lx);
   DB.lancamentos=(DB.lancamentos||[]).filter(function(x){return String(x.id)!==String(id)});
   DB.filaLanc=(DB.filaLanc||[]).filter(function(x){return String(x.id)!==String(id)});
   salvarLocal();cmo();toast('Lançamento excluído');R();
-  if(KEY&&!estavaNaFila)apiPost('delLancamento',{id:id}).catch(function(){});
+  if(KEY&&!estavaNaFila)pedirExclusao(id);
+}
+// Exclusões que ainda não chegaram à planilha (A6): fila persistente no aparelho, reenviada até o servidor
+// confirmar. Enquanto estiver na fila, o lançamento não volta quando o app recarrega da planilha.
+var DEL_ENVIANDO=false;
+function filaDel(){try{var a=JSON.parse(lsGet('filaDel')||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function gravarFilaDel(a){lsSet('filaDel',JSON.stringify(a))}
+function semExcluidos(ls){var f=filaDel();if(!f.length)return ls||[];return (ls||[]).filter(function(l){return f.indexOf(String(l.id))<0})}
+function pedirExclusao(id){var f=filaDel(),k=String(id);if(f.indexOf(k)<0){f.push(k);gravarFilaDel(f)}enviarFilaDel()}
+function enviarFilaDel(){
+  var f=filaDel();if(!KEY||!f.length||DEL_ENVIANDO)return;
+  var id=f[0];DEL_ENVIANDO=true;
+  apiPost('delLancamento',{id:id}).then(function(r){
+    DEL_ENVIANDO=false;
+    // ok, ou erro que não melhora tentando (sem id): sai da fila
+    if(r&&(r.ok||r.erro==='sem-id')){gravarFilaDel(filaDel().filter(function(x){return x!==id}));enviarFilaDel();return}
+    syncUI('erro','Exclusão na fila — tentando de novo');setTimeout(enviarFilaDel,20000);
+  }).catch(function(){DEL_ENVIANDO=false;syncUI('offline','Exclusão na fila — envio quando voltar');setTimeout(enviarFilaDel,20000)});
 }
 
 // ===== PAGINA CONTROLE — previsto x realizado =====
@@ -3766,9 +3870,12 @@ R();                    // desenha na hora, com a copia local (sem enviar nada)
 // Critico 1 (apagao de agosto): o que o aparelho ja tinha NAO conta como alteracao.
 // Antes ultimoEnviado nascia vazio e qualquer desenho antes da nuvem virava "alterou offline".
 SYNC.ultimoEnviado=assinatura();
+// A6: se a cópia local difere do último conteúdo que a planilha confirmou, a diferença é alteração
+// pendente (o app foi fechado antes de enviar). Sem registro de base (aparelho novo), nada muda.
+(function(){try{var p=JSON.parse(lsGet('pendente')||'null');if(KEY&&!NASCEU_VAZIO&&p&&p.b&&p.h&&p.h===impressao(SYNC.ultimoEnviado)){SYNC.pendenteBoot=p.b;SYNC.ultimoEnviado='pendente:'+p.h}}catch(e){}})();
 BOOTANDO=false;
 if(KEY){
-  puxarDaNuvem().then(function(){enviarFilaLanc()});   // busca a planilha e escoa lancamentos parados
+  puxarDaNuvem().then(function(){enviarFilaLanc();enviarFilaDel()});   // busca a planilha e escoa lancamentos e exclusoes parados
 }else{
   syncUI('offline','Sem chave — toque para conectar');
   setTimeout(pedirChave,400);   // primeira abertura no celular: pede a chave
@@ -3783,21 +3890,21 @@ if('serviceWorker' in navigator){
 
 // Voltou a internet: manda o que estiver na fila
 window.addEventListener('online',function(){
-  enviarFilaLanc();
-  if(assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);
+  enviarFilaLanc();enviarFilaDel();
+  if(SYNC.pronto&&assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);   // sem conexão ainda: busca a planilha (auditoria M2)
 });
 window.addEventListener('offline',function(){syncUI('offline','Offline — salvando aqui')});
 
 // Voltou para o app (trocou de aba / desbloqueou o celular): confere a planilha
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState!=='visible')return;
-  enviarFilaLanc();
-  if(assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);
+  enviarFilaLanc();enviarFilaDel();
+  if(SYNC.pronto&&assinatura()!==SYNC.ultimoEnviado)enviarAgora();else puxarDaNuvem(true);   // sem conexão ainda: busca a planilha (auditoria M2)
 });
 
 // Nao deixa sair com alteracao pendente sem avisar
 window.addEventListener('beforeunload',function(e){
-  if(KEY&&(assinatura()!==SYNC.ultimoEnviado||(DB.filaLanc&&DB.filaLanc.length))){e.preventDefault();e.returnValue=''}
+  if(KEY&&(assinatura()!==SYNC.ultimoEnviado||(DB.filaLanc&&DB.filaLanc.length)||filaDel().length)){e.preventDefault();e.returnValue=''}
 });
 </script>
 </body>

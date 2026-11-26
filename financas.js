@@ -1298,6 +1298,36 @@
     Fin.setConfig(DB, { terceiros: mp });
   };
   Fin.nomeReembolso = function (quem) { return 'Reembolso - ' + String(quem || '').trim(); };
+  // Entrada lançada com "Já entrou, somar": o lançamento SOMOU ao previsto (não substituiu). A marca fica na
+  // config 'somaPlano' = { '<id do lançamento>': true }, que viaja com o planejado no mesmo envio para a planilha,
+  // para que excluir ou editar depois (inclusive noutro dia ou aparelho) tire só o valor do lançamento.
+  // Efeito REAL de um lançamento no planejado (Desfazer/Excluir tiram exatamente isso, em qualquer aparelho).
+  // config 'efeitoPlano' = { '<id>': { d: centavos somados à linha, k: 's' soma | 'c' consumo acima do previsto,
+  // ym: 'AAAA-MM', t: quando foi registrado (ms), s0/s1: status antes/depois quando mudou } }. Só ficam os
+  // registrados a partir de 'limiteMs' (a config é uma célula da planilha e não pode crescer sem limite).
+  Fin.efeitoDe = function (DB, id) { var e = objOuVazio(cfgDadosRO(DB).efeitoPlano)[String(id)]; return e && typeof e === 'object' ? clone(e) : null; };
+  Fin.EFEITO_MAX = 250;          // no máximo 250 registros (os mais recentes)
+  Fin.EFEITO_MAX_TEXTO = 20000;  // e no máximo ~20 mil caracteres (a célula da config aceita 49 mil no total)
+  Fin.gravarEfeito = function (DB, id, rec, limiteMs) {
+    var mp = clone(objOuVazio(cfgDadosRO(DB).efeitoPlano)), lim = Number(limiteMs) || 0;
+    Object.keys(mp).forEach(function (k) { if (lim && (Number((mp[k] || {}).t) || 0) < lim) delete mp[k]; });
+    if (rec && (!lim || (Number(rec.t) || 0) >= lim)) mp[String(id)] = clone(rec);
+    var ks = Object.keys(mp).sort(function (a, b) { return (Number(mp[a].t) || 0) - (Number(mp[b].t) || 0); });
+    while (ks.length && (ks.length > Fin.EFEITO_MAX || JSON.stringify(mp).length > Fin.EFEITO_MAX_TEXTO)) delete mp[ks.shift()];
+    Fin.setConfig(DB, { efeitoPlano: mp });
+  };
+  Fin.tirarEfeito = function (DB, id) {
+    var mp = objOuVazio(cfgDadosRO(DB).efeitoPlano);
+    if (!mp[String(id)]) return;
+    mp = clone(mp); delete mp[String(id)];
+    Fin.setConfig(DB, { efeitoPlano: mp });
+  };
+  Fin.somadoAoPlano = function (DB, id) { return objOuVazio(cfgDadosRO(DB).somaPlano)[String(id)] === true; };
+  Fin.marcarSomadoAoPlano = function (DB, id, ligado) {
+    var mp = clone(objOuVazio(cfgDadosRO(DB).somaPlano)), k = String(id);
+    if (ligado) mp[k] = true; else if (mp[k]) delete mp[k]; else return;
+    Fin.setConfig(DB, { somaPlano: mp });
+  };
   // Valor da fatura no app do banco, digitado para conferir: config 'faturasBanco' = { '<cartão>|AAAA-MM': valor }.
   // Pagamento feito direto no cartão antes do vencimento: config 'pagoAntesFatura' = { '<cartão>|AAAA-MM': valor }.
   Fin.pagoAntes = function (DB, cartaoKey, ano, mes0) { return r(c(objOuVazio(cfgDadosRO(DB).pagoAntesFatura)[cartaoKey + '|' + ym(ano, mes0)])); };
